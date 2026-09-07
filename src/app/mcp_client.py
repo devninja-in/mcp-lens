@@ -14,6 +14,7 @@ async def _make_jsonrpc_request(
     ssl_verify: bool = True,
     timeout: int = 30,
     session_id: str | None = None,
+    is_notification: bool = False,
 ) -> tuple[dict, str | None]:
     headers = {
         "Content-Type": "application/json",
@@ -24,11 +25,12 @@ async def _make_jsonrpc_request(
     if session_id:
         headers["Mcp-Session-Id"] = session_id
 
-    payload = {
+    payload: dict = {
         "jsonrpc": "2.0",
-        "id": 1,
         "method": method,
     }
+    if not is_notification:
+        payload["id"] = 1
     if params:
         payload["params"] = params
 
@@ -37,6 +39,9 @@ async def _make_jsonrpc_request(
         resp.raise_for_status()
 
         new_session_id = resp.headers.get("Mcp-Session-Id", session_id)
+
+        if is_notification:
+            return {}, new_session_id
 
         content_type = resp.headers.get("content-type", "")
         if "text/event-stream" in content_type:
@@ -95,6 +100,7 @@ async def mcp_list_tools(
         ssl_verify=server_config.ssl_verify,
         timeout=server_config.timeout,
         session_id=session_id,
+        is_notification=True,
     )
 
     result, _ = await _make_jsonrpc_request(

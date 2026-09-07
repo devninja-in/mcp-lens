@@ -20,6 +20,12 @@ app.include_router(servers.router)
 app.include_router(auth_routes.router)
 app.include_router(tools.router)
 
+
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
+
+
 static_dir = Path(__file__).parent.parent.parent / "static"
 if static_dir.exists():
     app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
