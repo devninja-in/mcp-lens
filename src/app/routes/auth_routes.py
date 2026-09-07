@@ -1,6 +1,6 @@
 import webbrowser
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 
 from ..auth import get_auth_status, handle_oauth_callback, start_oauth_flow
