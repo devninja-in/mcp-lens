@@ -1,6 +1,11 @@
 from src.app.eval.models import (
-    CheckResult, EvalReport, LayerResult, ScoringConfig,
-    Severity, Status, ToolResult,
+    CheckResult,
+    EvalReport,
+    LayerResult,
+    ScoringConfig,
+    Severity,
+    Status,
+    ToolResult,
 )
 from src.app.eval.scoring import apply_scoring, compute_layer_score, compute_overall_score
 

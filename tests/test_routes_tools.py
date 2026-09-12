@@ -80,6 +80,7 @@ SAMPLE_TOOLS = [
 @pytest.mark.asyncio
 async def test_upload_ground_truth_valid(client):
     import io
+
     from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
@@ -329,6 +330,7 @@ async def test_upload_ground_truth_invalid_yaml(client):
 @pytest.mark.asyncio
 async def test_upload_ground_truth_warning_tool_not_found(client):
     import io
+
     from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
@@ -355,6 +357,7 @@ async def test_upload_ground_truth_warning_tool_not_found(client):
 @pytest.mark.asyncio
 async def test_get_ground_truth_exists(client):
     import io
+
     from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
@@ -391,6 +394,7 @@ async def test_get_ground_truth_not_exists(client):
 @pytest.mark.asyncio
 async def test_delete_ground_truth(client):
     import io
+
     from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
@@ -587,10 +591,10 @@ async def test_test_connection_exception(client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_test_connection_reauth_required(client, monkeypatch):
-    from src.app.mcp_client import ReAuthRequired
+    from src.app.mcp_client import ReAuthRequiredError
 
     async def mock_initialize(name, config):
-        raise ReAuthRequired("Need to re-authenticate")
+        raise ReAuthRequiredError("Need to re-authenticate")
 
     monkeypatch.setattr("src.app.routes.tools.mcp_initialize", mock_initialize)
 
@@ -639,10 +643,10 @@ async def test_fetch_tools_exception(client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_fetch_tools_reauth_required(client, monkeypatch):
-    from src.app.mcp_client import ReAuthRequired
+    from src.app.mcp_client import ReAuthRequiredError
 
     async def mock_list_tools(name, config):
-        raise ReAuthRequired("Need to re-authenticate")
+        raise ReAuthRequiredError("Need to re-authenticate")
 
     monkeypatch.setattr("src.app.routes.tools.mcp_list_tools", mock_list_tools)
 
@@ -678,8 +682,8 @@ async def test_evaluate_llm_no_config(client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_evaluate_llm_with_mock_adapter(client, monkeypatch):
-    from src.app.tools_store import save_tools
     from src.app.eval.model_adapter import MockAdapter
+    from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
 
@@ -705,8 +709,9 @@ async def test_evaluate_llm_with_mock_adapter(client, monkeypatch):
 @pytest.mark.asyncio
 async def test_evaluate_llm_with_ground_truth(client, monkeypatch):
     import io
-    from src.app.tools_store import save_tools
+
     from src.app.eval.model_adapter import MockAdapter
+    from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
 
@@ -742,8 +747,8 @@ async def test_evaluate_llm_with_ground_truth(client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_evaluate_llm_multi_llm(client, monkeypatch):
-    from src.app.tools_store import save_tools
     from src.app.eval.model_adapter import MockAdapter
+    from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
 
@@ -771,8 +776,8 @@ async def test_evaluate_llm_multi_llm(client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_evaluate_llm_with_default_llm_name(client, monkeypatch):
-    from src.app.tools_store import save_tools
     from src.app.eval.model_adapter import MockAdapter
+    from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
 
@@ -837,6 +842,7 @@ async def test_evaluate_llm_import_error(client, monkeypatch):
         "base_url": None,
     })
     monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", mock_get_eval_adapter)
+    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: None)
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
     assert resp.status_code == 400
@@ -844,8 +850,8 @@ async def test_evaluate_llm_import_error(client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_evaluate_llm_execution_error(client, monkeypatch):
-    from src.app.tools_store import save_tools
     from src.app.eval.model_adapter import MockAdapter
+    from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
 
@@ -951,9 +957,9 @@ async def test_evaluate_full_with_overlapping_tools(client):
 
 @pytest.mark.asyncio
 async def test_evaluate_llm_with_server_description(client, monkeypatch):
-    from src.app.tools_store import save_tools
     from src.app.database import set_server_config
     from src.app.eval.model_adapter import MockAdapter
+    from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
     await set_server_config("test-server", {
@@ -995,8 +1001,8 @@ async def test_evaluate_llm_adapter_returns_none(client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_evaluate_llm_single_with_overlapping_tools(client, monkeypatch):
-    from src.app.tools_store import save_tools
     from src.app.eval.model_adapter import MockAdapter
+    from src.app.tools_store import save_tools
 
     overlapping_tools = [
         {"name": "search_users", "description": "Search for users by name or email address",
@@ -1043,8 +1049,8 @@ async def test_evaluate_llm_single_exception_handler(client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_evaluate_llm_multi_exception_handler(client, monkeypatch):
-    from src.app.tools_store import save_tools
     from src.app.eval.model_adapter import MockAdapter
+    from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
 
@@ -1065,8 +1071,8 @@ async def test_evaluate_llm_multi_exception_handler(client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_evaluate_llm_multi_with_overlapping_tools(client, monkeypatch):
-    from src.app.tools_store import save_tools
     from src.app.eval.model_adapter import MockAdapter
+    from src.app.tools_store import save_tools
 
     overlapping_tools = [
         {"name": "search_users", "description": "Search for users by name or email address",
@@ -1077,7 +1083,10 @@ async def test_evaluate_llm_multi_with_overlapping_tools(client, monkeypatch):
     save_tools("test-server", overlapping_tools)
 
     monkeypatch.setattr("src.app.routes.tools.get_adapter_for_config", lambda name: MockAdapter())
-    monkeypatch.setattr("src.app.routes.tools.get_available_llm_configs", lambda: {"cfg1": {"provider": "mock", "model": "m1"}})
+    monkeypatch.setattr(
+        "src.app.routes.tools.get_available_llm_configs",
+        lambda: {"cfg1": {"provider": "mock", "model": "m1"}},
+    )
     monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: None)
 
     resp = client.get("/api/servers/test-server/evaluate/llm?llms=cfg1")
@@ -1093,6 +1102,7 @@ async def _raise_runtime_error(*args, **kwargs):
 @pytest.mark.asyncio
 async def test_evaluate_llm_single_http_exception_reraise(client, monkeypatch):
     from fastapi import HTTPException
+
     from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .models import CheckResult, Severity, Status
 
@@ -40,7 +41,7 @@ def _split_path(path: str) -> list[str | int]:
     return segments
 
 
-def evaluate_assertion(assertion: "Any", data: Any) -> CheckResult:
+def evaluate_assertion(assertion: Any, data: Any) -> CheckResult:
     handler = ASSERTION_HANDLERS.get(assertion.type)
     if handler is None:
         return CheckResult(
@@ -50,10 +51,7 @@ def evaluate_assertion(assertion: "Any", data: Any) -> CheckResult:
             severity=Severity.HIGH,
         )
     try:
-        if assertion.path:
-            value = resolve_path(data, assertion.path)
-        else:
-            value = data
+        value = resolve_path(data, assertion.path) if assertion.path else data
     except KeyError as e:
         if assertion.type in ("not_exists", "is_null"):
             return handler(None, assertion.expected, assertion.path)
@@ -218,7 +216,7 @@ def _assert_length(value: Any, expected: Any, path: str) -> CheckResult:
     try:
         actual = len(value)
     except TypeError:
-        return _make_check("length", False, path, "", f"Value has no length")
+        return _make_check("length", False, path, "", "Value has no length")
     return _make_check(
         "length", actual == int(expected), path,
         f"Length is {expected}",

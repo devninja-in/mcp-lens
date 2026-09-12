@@ -1,4 +1,5 @@
 import logging
+from datetime import UTC
 
 import yaml
 from fastapi import APIRouter, HTTPException, UploadFile
@@ -6,8 +7,6 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 
 from ..auth import clear_oauth_tokens
-
-logger = logging.getLogger(__name__)
 from ..config import load_config, persist_oauth_tokens
 from ..database import (
     delete_ground_truth,
@@ -16,13 +15,6 @@ from ..database import (
     save_eval_report,
     save_ground_truth,
 )
-from ..eval.quality import evaluate_tools_compat as evaluate_tools
-from ..eval.protocol import check_protocol_all
-from ..eval.quality import check_quality_all
-from ..eval.security import check_security_all
-from ..eval.overlap import detect_overlaps
-from ..eval.scoring import apply_scoring
-from ..eval.models import EvalReport
 from ..eval.llm_config import (
     get_adapter_for_config,
     get_available_llm_configs,
@@ -31,8 +23,17 @@ from ..eval.llm_config import (
     load_llm_config,
 )
 from ..eval.llm_eval import check_llm_all
-from ..mcp_client import ReAuthRequired, mcp_initialize, mcp_list_tools
+from ..eval.models import EvalReport
+from ..eval.overlap import detect_overlaps
+from ..eval.protocol import check_protocol_all
+from ..eval.quality import check_quality_all
+from ..eval.quality import evaluate_tools_compat as evaluate_tools
+from ..eval.scoring import apply_scoring
+from ..eval.security import check_security_all
+from ..mcp_client import ReAuthRequiredError, mcp_initialize, mcp_list_tools
 from ..tools_store import delete_tools, load_tools, save_tools
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/servers", tags=["tools"])
 
@@ -46,10 +47,10 @@ class FalsePositiveRequest(BaseModel):
 async def test_connection(name: str) -> dict:
     logger.info("Testing connection to server '%s'", name)
     config = await load_config()
-    if name not in config.mcpServers:
+    if name not in config.mcp_servers:
         raise HTTPException(status_code=404, detail=f"Server '{name}' not found")
     try:
-        result, _ = await mcp_initialize(name, config.mcpServers[name])
+        result, _ = await mcp_initialize(name, config.mcp_servers[name])
         if "error" in result:
             logger.warning("Connection test failed for '%s': %s", name, result["error"])
             return {"success": False, "message": f"MCP error: {result['error']}"}
@@ -60,7 +61,7 @@ async def test_connection(name: str) -> dict:
             "message": "Connection successful",
             "server_info": server_info,
         }
-    except ReAuthRequired as e:
+    except ReAuthRequiredError as e:
         logger.warning("Re-auth required for '%s'", name)
         return {"success": False, "message": str(e), "reauth": True}
     except Exception as e:
@@ -72,9 +73,9 @@ async def test_connection(name: str) -> dict:
 async def fetch_tools(name: str) -> dict:
     logger.info("Fetching tools from server '%s'", name)
     config = await load_config()
-    if name not in config.mcpServers:
+    if name not in config.mcp_servers:
         raise HTTPException(status_code=404, detail=f"Server '{name}' not found")
-    server_config = config.mcpServers[name]
+    server_config = config.mcp_servers[name]
     try:
         tools = await mcp_list_tools(name, server_config)
         path = save_tools(name, tools)
@@ -87,7 +88,7 @@ async def fetch_tools(name: str) -> dict:
             "tools": tools,
             "count": len(tools),
         }
-    except ReAuthRequired as e:
+    except ReAuthRequiredError as e:
         logger.warning("Re-auth required while fetching tools for '%s'", name)
         return {
             "success": False, "message": str(e),
@@ -137,7 +138,7 @@ async def evaluate_full(name: str) -> dict:
             detail=f"No tools found for '{name}'. Fetch tools first.",
         )
     tools = result["tools"]
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     logger.info("Running full evaluation for server '%s' (%d tools)", name, len(tools))
 
@@ -155,7 +156,7 @@ async def evaluate_full(name: str) -> dict:
     llm_meta: dict = {"llm_configured": llm_config is not None}
 
     report = EvalReport(
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         server_name=name,
         layers=layers,
         metadata=llm_meta,
@@ -178,13 +179,13 @@ async def upload_ground_truth(name: str, file: UploadFile) -> dict:
         raise HTTPException(status_code=400, detail="File too large (max 1MB)")
     try:
         yaml_text = content.decode("utf-8")
-    except UnicodeDecodeError:
-        raise HTTPException(status_code=400, detail="File must be valid UTF-8 text")
+    except UnicodeDecodeError as e:
+        raise HTTPException(status_code=400, detail="File must be valid UTF-8 text") from e
 
     try:
         data = yaml.safe_load(yaml_text)
     except yaml.YAMLError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid YAML: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid YAML: {e}") from e
 
     if not isinstance(data, dict) or "test_cases" not in data:
         raise HTTPException(status_code=400, detail="YAML must contain a 'test_cases' key")
@@ -281,20 +282,20 @@ async def download_ground_truth_template(name: str) -> Response:
 
 @router.get("/{name}/evaluate/llm")
 async def evaluate_llm(name: str, llms: str | None = None) -> dict:
-    result = load_tools(name)
-    if result is None:
+    tools_data = load_tools(name)
+    if tools_data is None:
         raise HTTPException(
             status_code=404,
             detail=f"No tools found for '{name}'. Fetch tools first.",
         )
-    tools = result["tools"]
+    tools = tools_data["tools"]
 
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     config = await load_config()
     server_description = ""
-    if name in config.mcpServers:
-        server_description = config.mcpServers[name].description or ""
+    if name in config.mcp_servers:
+        server_description = config.mcp_servers[name].description or ""
     if server_description:
         logger.info("Using server description as LLM context for '%s'", name)
 
@@ -329,7 +330,7 @@ async def evaluate_llm(name: str, llms: str | None = None) -> dict:
                 raise HTTPException(status_code=500, detail="Failed to create LLM adapter")
         except ImportError as e:
             logger.error("Missing LLM dependency: %s", e)
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
         try:
             llm_layer = await check_llm_all(tools, adapter, server_description, ground_truth=ground_truth_scenarios)
@@ -344,14 +345,17 @@ async def evaluate_llm(name: str, llms: str | None = None) -> dict:
                 layers["quality"].catalog_checks.extend(overlaps)
 
             report = EvalReport(
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
                 server_name=name,
                 layers=layers,
             )
             report = apply_scoring(report)
-            logger.info("LLM evaluation complete for '%s': score=%.1f gate=%s", name, report.overall_score, report.gate_passed)
+            logger.info(
+                "LLM evaluation complete for '%s': score=%.1f gate=%s",
+                name, report.overall_score, report.gate_passed,
+            )
 
-            result = {
+            eval_result = {
                 "layer": llm_layer.to_dict(),
                 "overall_score": report.overall_score,
                 "gate_passed": report.gate_passed,
@@ -363,7 +367,7 @@ async def evaluate_llm(name: str, llms: str | None = None) -> dict:
             }
             full_report = report.to_dict()
             await save_eval_report(name, full_report, has_llm=True)
-            return result
+            return eval_result
         except HTTPException:
             raise
         except Exception as e:
@@ -423,12 +427,15 @@ async def evaluate_llm(name: str, llms: str | None = None) -> dict:
         layers["llm"] = primary_layer
 
     report = EvalReport(
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         server_name=name,
         layers=layers,
     )
     report = apply_scoring(report)
-    logger.info("Multi-LLM evaluation complete for '%s': score=%.1f gate=%s", name, report.overall_score, report.gate_passed)
+    logger.info(
+        "Multi-LLM evaluation complete for '%s': score=%.1f gate=%s",
+        name, report.overall_score, report.gate_passed,
+    )
 
     result: dict = {
         "layer": primary_layer.to_dict() if primary_layer else None,
@@ -473,13 +480,13 @@ async def upload_tools(name: str, file: UploadFile) -> dict:
         raise HTTPException(status_code=400, detail="File too large (max 2MB)")
     try:
         yaml_text = content.decode("utf-8")
-    except UnicodeDecodeError:
-        raise HTTPException(status_code=400, detail="File must be valid UTF-8 text")
+    except UnicodeDecodeError as e:
+        raise HTTPException(status_code=400, detail="File must be valid UTF-8 text") from e
 
     try:
         data = yaml.safe_load(yaml_text)
     except yaml.YAMLError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid YAML: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid YAML: {e}") from e
 
     if not isinstance(data, dict) or "tools" not in data:
         raise HTTPException(status_code=400, detail="YAML must contain a 'tools' key")

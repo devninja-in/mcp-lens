@@ -1,20 +1,17 @@
 import asyncio
 
-import pytest
-
 from src.app.eval.llm_eval import (
-    check_llm_all,
-    _check_description_clarity,
-    _check_tool_selection,
     _check_arg_generation,
-    _check_tool_disambiguation,
+    _check_description_clarity,
     _check_safety_resistance,
+    _check_tool_disambiguation,
+    _check_tool_selection,
     _check_type,
     _suggest_improved_description,
+    check_llm_all,
 )
 from src.app.eval.model_adapter import MockAdapter
-from src.app.eval.models import Status, Severity
-
+from src.app.eval.models import Severity, Status
 
 SAMPLE_TOOLS = [
     {
@@ -183,7 +180,10 @@ class TestToolSelection:
     def test_prerequisite_selection_warns(self):
         tools = [
             {"name": "updateConfluencePage", "description": "Update a Confluence page with new content"},
-            {"name": "getAccessibleAtlassianResources", "description": "Get list of accessible Atlassian cloud resources"},
+            {
+                "name": "getAccessibleAtlassianResources",
+                "description": "Get list of accessible Atlassian cloud resources",
+            },
         ]
 
         class PrereqAdapter(MockAdapter):
@@ -315,7 +315,7 @@ class TestToolDisambiguation:
                 return {"tool_name": "search_customers", "arguments": {}}
 
             async def generate_answer(self, tool_result, prompt):
-                return f"I need to search_customers"
+                return "I need to search_customers"
 
         adapter = CorrectAdapter()
         results = _run(_check_tool_disambiguation(tools, adapter))
@@ -638,12 +638,18 @@ class TestCoverageGaps:
             {
                 "name": "searchCustomers",
                 "description": "Search for customers by name or email address",
-                "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}, "email": {"type": "string"}},
+                },
             },
             {
                 "name": "findCustomers",
                 "description": "Find customers by name or email address",
-                "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}, "email": {"type": "string"}},
+                },
             },
         ]
 
@@ -677,12 +683,18 @@ class TestCoverageGaps:
             {
                 "name": "searchCustomers",
                 "description": "Search for customers by name or email address",
-                "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}, "email": {"type": "string"}},
+                },
             },
             {
                 "name": "findCustomers",
                 "description": "Find customers by name or email address",
-                "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}, "email": {"type": "string"}},
+                },
             },
         ]
 
@@ -701,8 +713,14 @@ class TestCoverageGaps:
     def test_disambiguation_selected_tool_b_prerequisite(self):
         """Test disambiguation selected tool_b with prerequisite check."""
         tools = [
-            {"name": "updateUserProfile", "description": "Update a user profile with new personal information and settings"},
-            {"name": "getUserProfile", "description": "Get user profile with personal information and settings"},
+            {
+                "name": "updateUserProfile",
+                "description": "Update a user profile with new personal information and settings",
+            },
+            {
+                "name": "getUserProfile",
+                "description": "Get user profile with personal information and settings",
+            },
         ]
 
         class PrereqToolBAdapter(MockAdapter):
@@ -716,7 +734,12 @@ class TestCoverageGaps:
 
         adapter = PrereqToolBAdapter()
         results = _run(_check_tool_disambiguation(tools, adapter))
-        warn_checks = [c for tr in results for c in tr.checks if c.status == Status.WARN and c.details.get("prerequisite")]
+        warn_checks = [
+            c
+            for tr in results
+            for c in tr.checks
+            if c.status == Status.WARN and c.details.get("prerequisite")
+        ]
         assert len(warn_checks) >= 1
 
     def test_disambiguation_selected_tool_b_fail_with_suggestion(self):
@@ -725,12 +748,18 @@ class TestCoverageGaps:
             {
                 "name": "searchCustomers",
                 "description": "Search for customers by name or email address",
-                "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}, "email": {"type": "string"}},
+                },
             },
             {
                 "name": "findCustomers",
                 "description": "Find customers by name or email address",
-                "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}, "email": {"type": "string"}},
+                },
             },
         ]
 
@@ -757,12 +786,18 @@ class TestCoverageGaps:
             {
                 "name": "searchCustomers",
                 "description": "Search for customers by name or email address",
-                "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}, "email": {"type": "string"}},
+                },
             },
             {
                 "name": "findCustomers",
                 "description": "Find customers by name or email address",
-                "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}, "email": {"type": "string"}},
+                },
             },
             {"name": "other_tool", "description": "Some completely different tool"},
         ]
@@ -785,12 +820,18 @@ class TestCoverageGaps:
             {
                 "name": "searchCustomers",
                 "description": "Search for customers by name or email address",
-                "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}, "email": {"type": "string"}},
+                },
             },
             {
                 "name": "findCustomers",
                 "description": "Find customers by name or email address",
-                "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}, "email": {"type": "string"}},
+                },
             },
         ]
 
@@ -902,13 +943,22 @@ class TestCoverageGaps:
     def test_disambiguation_seen_pairs_dedup_via_mock(self):
         """Test line 534: seen_pairs dedup by mocking detect_overlaps to return duplicate pairs."""
         import unittest.mock as mock
-        from src.app.eval.models import CheckResult as CR
+
+        from src.app.eval.models import CheckResult
 
         duplicate_overlaps = [
-            CR(check_id="overlap.tool_pair", status=Status.WARN, message="overlap",
-               details={"tool_a": "searchCustomers", "tool_b": "findCustomers"}),
-            CR(check_id="overlap.tool_pair", status=Status.WARN, message="overlap again",
-               details={"tool_a": "findCustomers", "tool_b": "searchCustomers"}),
+            CheckResult(
+                check_id="overlap.tool_pair",
+                status=Status.WARN,
+                message="overlap",
+                details={"tool_a": "searchCustomers", "tool_b": "findCustomers"},
+            ),
+            CheckResult(
+                check_id="overlap.tool_pair",
+                status=Status.WARN,
+                message="overlap again",
+                details={"tool_a": "findCustomers", "tool_b": "searchCustomers"},
+            ),
         ]
         tools = [
             {"name": "searchCustomers", "description": "Search for customers by name or email address",
@@ -931,11 +981,16 @@ class TestCoverageGaps:
     def test_disambiguation_tool_not_found_via_mock(self):
         """Test line 540: tool_a or tool_b not in tools list."""
         import unittest.mock as mock
-        from src.app.eval.models import CheckResult as CR
+
+        from src.app.eval.models import CheckResult
 
         overlaps_with_missing = [
-            CR(check_id="overlap.tool_pair", status=Status.WARN, message="overlap",
-               details={"tool_a": "nonexistent_tool", "tool_b": "also_missing"}),
+            CheckResult(
+                check_id="overlap.tool_pair",
+                status=Status.WARN,
+                message="overlap",
+                details={"tool_a": "nonexistent_tool", "tool_b": "also_missing"},
+            ),
         ]
         tools = [
             {"name": "existing_tool", "description": "An existing tool"},

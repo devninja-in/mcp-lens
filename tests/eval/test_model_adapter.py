@@ -62,13 +62,13 @@ class TestGetAdapter:
             get_adapter("nonexistent")
 
     def test_anthropic_missing_package(self):
-        try:
+        import contextlib
+
+        with contextlib.suppress(ImportError, ValueError):
             get_adapter("anthropic")
-        except (ImportError, ValueError):
-            pass
 
     def test_openai_missing_package(self):
-        try:
+        import contextlib
+
+        with contextlib.suppress(ImportError, ValueError):
             get_adapter("openai")
-        except (ImportError, ValueError):
-            pass

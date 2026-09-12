@@ -54,7 +54,7 @@ async def test_get_token_bearer(db, monkeypatch):
     monkeypatch.setenv("MCP_MY_MCP_TOKEN", "bearer-token-value")
     config = McpServerConfig(url="https://example.com", auth=True, auth_mode="bearer_token")
     token = await get_token("my-mcp", config)
-    assert token == "bearer-token-value"
+    assert token == "bearer-token-value"  # noqa: S105
 
 
 @pytest.mark.asyncio
@@ -77,7 +77,7 @@ async def test_get_token_bearer_from_db(db):
     await set_bearer_token("db-server", "my-db-token")
     config = McpServerConfig(url="https://example.com", auth=True, auth_mode="bearer_token")
     token = await get_token("db-server", config)
-    assert token == "my-db-token"
+    assert token == "my-db-token"  # noqa: S105
 
 
 # --- Discovery tests ---
@@ -128,7 +128,7 @@ async def test_discover_oauth_metadata_openid(monkeypatch):
 
     result = await discover_oauth_metadata("https://example.com/mcp")
     assert result["authorization_endpoint"] == "https://example.com/authorize"
-    assert result["token_endpoint"] == "https://example.com/token"
+    assert result["token_endpoint"] == "https://example.com/token"  # noqa: S105
     assert result["registration_endpoint"] == "https://example.com/register"
     assert result["scopes_supported"] == ["openid", "profile"]
     assert "discovery_url" in result

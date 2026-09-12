@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 from .assertions import evaluate_assertion
 from .models import CheckResult, LayerResult, Severity, Status, TestCase, TestSuite, ToolResult

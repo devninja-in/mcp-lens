@@ -1,7 +1,7 @@
 import pytest
 
-from src.app.eval.runner import run_single_test, run_test_suite
 from src.app.eval.models import Assertion, Status, TestCase, TestSuite
+from src.app.eval.runner import run_single_test, run_test_suite
 
 
 async def _ok_call_fn(tool_name, arguments):

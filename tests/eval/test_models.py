@@ -1,6 +1,12 @@
 from src.app.eval.models import (
-    CheckResult, EvalReport, LayerResult, Severity, ScoringConfig,
-    Status, TimingStats, ToolResult,
+    CheckResult,
+    EvalReport,
+    LayerResult,
+    ScoringConfig,
+    Severity,
+    Status,
+    TimingStats,
+    ToolResult,
 )
 
 

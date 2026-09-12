@@ -1,5 +1,10 @@
 from src.app.eval.models import (
-    CheckResult, EvalReport, LayerResult, Severity, Status, ToolResult,
+    CheckResult,
+    EvalReport,
+    LayerResult,
+    Severity,
+    Status,
+    ToolResult,
 )
 from src.app.eval.regression import RegressionDiff, compare_reports
 

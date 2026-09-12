@@ -1,7 +1,6 @@
 """Tests for multi-LLM configuration loading and adapter creation."""
 
 import json
-import os
 
 import pytest
 
@@ -11,7 +10,6 @@ from src.app.eval.llm_config import (
     get_available_llm_configs,
     get_default_llm_name,
     load_multi_llm_configs,
-    LLM_CONFIG_PATH,
 )
 from src.app.eval.model_adapter import MockAdapter
 

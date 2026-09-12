@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 async def _ask_llm_text(adapter: Any, prompt: str) -> str:
-    return await adapter.generate_answer(None, prompt)
+    result: str = await adapter.generate_answer(None, prompt)
+    return result
 
 
 async def _check_description_clarity(
@@ -89,8 +90,10 @@ async def _check_description_clarity(
                         "reason": reason,
                         "location": "description",
                         "current_value": desc[:100] + ("..." if len(desc) > 100 else ""),
-                        "suggestion": "Improve the description to clearly state what the tool does, when to use it, expected inputs, and output format."
-                        if rating < 8 else None,
+                        "suggestion": (
+                            "Improve the description to clearly state what the tool does, "
+                            "when to use it, expected inputs, and output format."
+                        ) if rating < 8 else None,
                     },
                 )],
             ))
@@ -111,7 +114,10 @@ async def _check_description_clarity(
 async def _generate_scenario(adapter: Any, tool: dict, server_description: str = "") -> str:
     name = tool.get("name", "")
     desc = (tool.get("description") or "").strip()
-    server_ctx = f"This tool belongs to an MCP server described as: '{server_description}'. " if server_description else ""
+    server_ctx = (
+        f"This tool belongs to an MCP server described as: '{server_description}'. "
+        if server_description else ""
+    )
     prompt = (
         f"{server_ctx}"
         f"Generate a single, short user request (one sentence) that would DIRECTLY require "
@@ -235,7 +241,12 @@ async def _check_tool_selection(
                             status=Status.PASS,
                             message=f"LLM correctly selected '{selected}' for: \"{scenario[:80]}\"",
                             tool_name=name,
-                            details={"scenario": scenario, "selected": selected, "scenario_source": "user_provided", "arguments": sel_args},
+                            details={
+                                "scenario": scenario,
+                                "selected": selected,
+                                "scenario_source": "user_provided",
+                                "arguments": sel_args,
+                            },
                         ))
                     else:
                         selected_tool = next((t for t in tools if t.get("name") == selected), None)
@@ -247,7 +258,10 @@ async def _check_tool_selection(
                             checks.append(CheckResult(
                                 check_id="llm.tool_selection",
                                 status=Status.WARN,
-                                message=f"LLM selected '{selected}' as a prerequisite step before '{name}' for: \"{scenario[:80]}\"",
+                                message=(
+                                    f"LLM selected '{selected}' as a prerequisite step "
+                                    f"before '{name}' for: \"{scenario[:80]}\""
+                                ),
                                 severity=Severity.MEDIUM,
                                 tool_name=name,
                                 details={
@@ -256,7 +270,10 @@ async def _check_tool_selection(
                                     "prerequisite": True, "prerequisite_reason": prereq_reason,
                                     "scenario_source": "user_provided",
                                     "location": "name + description",
-                                    "suggestion": f"The LLM chose '{selected}' as an information-gathering step before '{name}'.",
+                                    "suggestion": (
+                                        f"The LLM chose '{selected}' as an "
+                                        f"information-gathering step before '{name}'."
+                                    ),
                                 },
                             ))
                         else:
@@ -268,7 +285,10 @@ async def _check_tool_selection(
                                 "arguments": sel_args,
                                 "scenario_source": "user_provided",
                                 "location": "name + description",
-                                "suggestion": f"Improve the description of '{name}' to make it more distinct. The LLM confused it with '{selected}'.",
+                                "suggestion": (
+                                    f"Improve the description of '{name}' to make it more distinct. "
+                                    f"The LLM confused it with '{selected}'."
+                                ),
                             }
                             if suggested_desc:
                                 fail_details["suggested_description"] = suggested_desc
@@ -298,7 +318,12 @@ async def _check_tool_selection(
                             status=Status.PASS,
                             message=f"LLM correctly selected '{name}' for: \"{scenario[:80]}\"",
                             tool_name=name,
-                            details={"scenario": scenario, "selected": selected, "scenario_source": scenario_source, "arguments": sel_args},
+                            details={
+                                "scenario": scenario,
+                                "selected": selected,
+                                "scenario_source": scenario_source,
+                                "arguments": sel_args,
+                            },
                         )],
                     ))
                 else:
@@ -314,7 +339,10 @@ async def _check_tool_selection(
                             checks=[CheckResult(
                                 check_id="llm.tool_selection",
                                 status=Status.WARN,
-                                message=f"LLM selected '{selected}' as a prerequisite step before '{name}' for: \"{scenario[:80]}\"",
+                                message=(
+                                    f"LLM selected '{selected}' as a prerequisite step "
+                                    f"before '{name}' for: \"{scenario[:80]}\""
+                                ),
                                 severity=Severity.MEDIUM,
                                 tool_name=name,
                                 details={
@@ -323,7 +351,10 @@ async def _check_tool_selection(
                                     "prerequisite": True, "prerequisite_reason": prereq_reason,
                                     "scenario_source": scenario_source,
                                     "location": "name + description",
-                                    "suggestion": f"The LLM chose '{selected}' as an information-gathering step before '{name}'.",
+                                    "suggestion": (
+                                        f"The LLM chose '{selected}' as an "
+                                        f"information-gathering step before '{name}'."
+                                    ),
                                 },
                             )],
                         ))
@@ -337,7 +368,10 @@ async def _check_tool_selection(
                             "arguments": sel_args,
                             "scenario_source": scenario_source,
                             "location": "name + description",
-                            "suggestion": f"Improve the description of '{name}' to make it more distinct. The LLM confused it with '{selected}'.",
+                            "suggestion": (
+                                f"Improve the description of '{name}' to make it more distinct. "
+                                f"The LLM confused it with '{selected}'."
+                            ),
                         }
                         if suggested_desc:
                             auto_fail_details["suggested_description"] = suggested_desc
@@ -422,7 +456,10 @@ async def _check_arg_generation(
                             tool_name=name,
                             details={
                                 "location": f"inputSchema.properties.{req}",
-                                "suggestion": f"Add a clearer description to the '{req}' property so the LLM knows what value to provide.",
+                                "suggestion": (
+                                    f"Add a clearer description to the '{req}' property "
+                                    f"so the LLM knows what value to provide."
+                                ),
                             },
                         ))
 
@@ -437,7 +474,10 @@ async def _check_arg_generation(
                             details={
                                 "location": "inputSchema.properties",
                                 "current_value": list(props.keys()),
-                                "suggestion": f"Consider adding '{arg_name}' to the schema if it's a valid parameter, or improve descriptions to prevent hallucination.",
+                                "suggestion": (
+                                    f"Consider adding '{arg_name}' to the schema if it's a "
+                                    f"valid parameter, or improve descriptions to prevent hallucination."
+                                ),
                             },
                         ))
 
@@ -451,13 +491,18 @@ async def _check_arg_generation(
                                 checks.append(CheckResult(
                                     check_id=f"llm.arg_generation.type.{arg_name}",
                                     status=Status.WARN,
-                                    message=f"LLM provided {type(arg_val).__name__} for '{arg_name}', expected {expected_type}",
+                                    message=(
+                                        f"LLM provided {type(arg_val).__name__} for '{arg_name}', "
+                                        f"expected {expected_type}"
+                                    ),
                                     severity=Severity.MEDIUM,
                                     tool_name=name,
                                     details={
                                         "location": f"inputSchema.properties.{arg_name}.type",
                                         "current_value": expected_type,
-                                        "suggestion": f"Clarify the type and format of '{arg_name}' in the description.",
+                                        "suggestion": (
+                                            f"Clarify the type and format of '{arg_name}' in the description."
+                                        ),
                                     },
                                 ))
 
@@ -468,7 +513,10 @@ async def _check_arg_generation(
                             checks.append(CheckResult(
                                 check_id=f"llm.arg_generation.ground_truth.{arg_name}",
                                 status=Status.WARN,
-                                message=f"Arg '{arg_name}' differs from ground truth: got '{actual_val}', expected '{expected_val}'",
+                                message=(
+                                    f"Arg '{arg_name}' differs from ground truth: "
+                                    f"got '{actual_val}', expected '{expected_val}'"
+                                ),
                                 severity=Severity.MEDIUM,
                                 tool_name=name,
                                 details={
@@ -476,7 +524,10 @@ async def _check_arg_generation(
                                     "expected": expected_val,
                                     "actual": actual_val,
                                     "location": f"inputSchema.properties.{arg_name}",
-                                    "suggestion": f"The LLM generated '{actual_val}' but ground truth expected '{expected_val}' for '{arg_name}'.",
+                                    "suggestion": (
+                                        f"The LLM generated '{actual_val}' but ground truth expected "
+                                        f"'{expected_val}' for '{arg_name}'."
+                                    ),
                                 },
                             ))
 
@@ -599,7 +650,10 @@ async def _check_tool_disambiguation(
                         "expected": tool_a_name,
                         "selected": tool_b_name,
                         "location": "description",
-                        "suggestion": f"Differentiate the descriptions of '{tool_a_name}' and '{tool_b_name}' to make their purposes distinct.",
+                        "suggestion": (
+                            f"Differentiate the descriptions of '{tool_a_name}' and "
+                            f"'{tool_b_name}' to make their purposes distinct."
+                        ),
                     }
                     if suggested_desc:
                         disambig_details["suggested_description"] = suggested_desc
@@ -661,9 +715,9 @@ async def _check_safety_resistance(
         action = classify_tool_action(tool)
 
         benign_prompts = {
-            "destructive": f"Show me a list of all items that could be managed by the system",
-            "write": f"Display the current configuration settings",
-            "external_side_effect": f"Show me the status of recent activities",
+            "destructive": "Show me a list of all items that could be managed by the system",
+            "write": "Display the current configuration settings",
+            "external_side_effect": "Show me the status of recent activities",
         }
         benign_prompt = benign_prompts.get(action, "List all available items")
 
@@ -687,7 +741,11 @@ async def _check_safety_resistance(
                             "selected": name,
                             "classified_action": action,
                             "location": "name + description + annotations",
-                            "suggestion": f"Ensure '{name}' has clear destructive/write annotations and a description that emphasizes its {action} nature, so agents don't select it for read-only queries.",
+                            "suggestion": (
+                                f"Ensure '{name}' has clear destructive/write annotations and a "
+                                f"description that emphasizes its {action} nature, so agents don't "
+                                f"select it for read-only queries."
+                            ),
                         },
                     )],
                 ))
@@ -697,7 +755,10 @@ async def _check_safety_resistance(
                     checks=[CheckResult(
                         check_id="llm.safety_resistance",
                         status=Status.PASS,
-                        message=f"LLM correctly avoided {action} tool '{name}' for benign request (selected '{selected}')",
+                        message=(
+                            f"LLM correctly avoided {action} tool '{name}' for benign request "
+                            f"(selected '{selected}')"
+                        ),
                         tool_name=name,
                         details={"benign_prompt": benign_prompt, "selected": selected},
                     )],

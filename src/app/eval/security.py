@@ -49,11 +49,11 @@ _BROAD_PERMISSION_PATTERNS = re.compile(
 
 def _extract_first_verb(name: str) -> str:
     if "_" in name:
-        return name.split("_")[0].lower()
+        return str(name.split("_")[0].lower())
     parts = _CAMEL_SPLIT.findall(name)
     if parts:
-        return parts[0].lower()
-    return name.lower()
+        return str(parts[0].lower())
+    return str(name.lower())
 
 
 def _classify_verb(verb: str) -> str | None:
@@ -103,9 +103,18 @@ def _check_annotation_consistency(tool: dict) -> CheckResult:
 
     if annotations.get("readOnlyHint") is True and action in ("write", "destructive", "external_side_effect"):
         action_explanations = {
-            "write": "its name or description contains write verbs (create, update, modify, etc.), suggesting it mutates data",
-            "destructive": "its name or description contains destructive verbs (delete, remove, purge, etc.), suggesting it destroys data",
-            "external_side_effect": "its name or description contains side-effect verbs (send, publish, export, share, etc.), suggesting it triggers external actions",
+            "write": (
+                "its name or description contains write verbs (create, update, modify, etc.), "
+                "suggesting it mutates data"
+            ),
+            "destructive": (
+                "its name or description contains destructive verbs (delete, remove, purge, etc.), "
+                "suggesting it destroys data"
+            ),
+            "external_side_effect": (
+                "its name or description contains side-effect verbs "
+                "(send, publish, export, share, etc.), suggesting it triggers external actions"
+            ),
         }
         explanation = action_explanations[action]
         return CheckResult(
@@ -120,7 +129,10 @@ def _check_annotation_consistency(tool: dict) -> CheckResult:
                 "classified_action": action,
                 "location": "annotations.readOnlyHint",
                 "current_value": True,
-                "suggestion": "Set readOnlyHint to false or remove it to ensure agents request user confirmation before executing this tool.",
+                "suggestion": (
+                    "Set readOnlyHint to false or remove it to ensure agents request user "
+                    "confirmation before executing this tool."
+                ),
             },
         )
 
@@ -138,7 +150,10 @@ def _check_annotation_consistency(tool: dict) -> CheckResult:
                 "classified_action": action,
                 "location": "annotations.destructiveHint",
                 "current_value": False,
-                "suggestion": "Set destructiveHint to true so agents prompt for confirmation before executing destructive operations.",
+                "suggestion": (
+                    "Set destructiveHint to true so agents prompt for confirmation before "
+                    "executing destructive operations."
+                ),
             },
         )
 
@@ -168,7 +183,10 @@ def _check_destructive_without_guard(tool: dict) -> CheckResult:
             details={
                 "location": "annotations",
                 "current_value": None,
-                "suggestion": 'Add annotations: {"destructiveHint": true, "readOnlyHint": false} so agents know to require user confirmation.',
+                "suggestion": (
+                    'Add annotations: {"destructiveHint": true, "readOnlyHint": false} '
+                    'so agents know to require user confirmation.'
+                ),
             },
         )
 
@@ -192,7 +210,10 @@ def _check_prompt_injection_surface(tool: dict) -> CheckResult:
                 "matched": match.group(),
                 "location": "description",
                 "current_value": desc[:120] + ("..." if len(desc) > 120 else ""),
-                "suggestion": f"Remove or rephrase the '{match.group()}' pattern from the description — it may trick LLM agents into unsafe behavior.",
+                "suggestion": (
+                    f"Remove or rephrase the '{match.group()}' pattern from the description — "
+                    f"it may trick LLM agents into unsafe behavior."
+                ),
             },
         )
     return CheckResult(
@@ -224,12 +245,18 @@ def _check_data_exfil_risk(tool: dict) -> CheckResult:
         return CheckResult(
             check_id="security.data_exfil",
             status=Status.FAIL,
-            message=f"Parameters {flagged} could be used for data exfiltration — an agent could be tricked into sending sensitive data to an attacker-controlled endpoint.",
+            message=(
+                f"Parameters {flagged} could be used for data exfiltration — an agent could be "
+                f"tricked into sending sensitive data to an attacker-controlled endpoint."
+            ),
             severity=Severity.MEDIUM,
             details={
                 "flagged_params": flagged,
                 "location": f"inputSchema.properties.[{', '.join(flagged)}]",
-                "suggestion": "Constrain these parameters with enum values, URL pattern validation, or domain allowlists to prevent exfiltration.",
+                "suggestion": (
+                    "Constrain these parameters with enum values, URL pattern validation, "
+                    "or domain allowlists to prevent exfiltration."
+                ),
             },
         )
 
@@ -269,13 +296,19 @@ def _check_sql_injection_surface(tool: dict) -> CheckResult:
         return CheckResult(
             check_id="security.sql_injection",
             status=Status.FAIL,
-            message=f"Parameter '{pname}' accepts freeform text that could contain SQL/commands — an agent could be manipulated into injecting malicious queries.",
+            message=(
+                f"Parameter '{pname}' accepts freeform text that could contain SQL/commands — "
+                f"an agent could be manipulated into injecting malicious queries."
+            ),
             severity=Severity.HIGH,
             details={
                 "parameter": pname,
                 "location": f"inputSchema.properties.{pname}",
                 "current_value": f'type: "{pdef.get("type")}", no enum/pattern constraint',
-                "suggestion": f"Add an 'enum' array to restrict allowed values, or a 'pattern' regex to validate the format of '{pname}'.",
+                "suggestion": (
+                    f"Add an 'enum' array to restrict allowed values, or a 'pattern' regex "
+                    f"to validate the format of '{pname}'."
+                ),
             },
         )
 
@@ -299,7 +332,10 @@ def _check_broad_permissions(tool: dict) -> CheckResult:
                 "matched": match.group(),
                 "location": "description",
                 "current_value": desc[:120] + ("..." if len(desc) > 120 else ""),
-                "suggestion": "Scope the tool's permissions to specific actions rather than granting broad/arbitrary access. Describe exactly what it can do.",
+                "suggestion": (
+                    "Scope the tool's permissions to specific actions rather than granting "
+                    "broad/arbitrary access. Describe exactly what it can do."
+                ),
             },
         )
     return CheckResult(

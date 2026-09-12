@@ -65,10 +65,10 @@ class AnthropicAdapter:
     def __init__(self, model: str = "claude-sonnet-4-20250514", api_key: str | None = None):
         try:
             import anthropic
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "anthropic package required. Install with: pip install anthropic"
-            )
+            ) from err
         self.model = model
         self.client = anthropic.AsyncAnthropic(api_key=api_key) if api_key else anthropic.AsyncAnthropic()
         logger.debug("Initialized AnthropicAdapter with model=%s", model)
@@ -76,7 +76,6 @@ class AnthropicAdapter:
     async def select_tool(
         self, tools: list[dict], user_prompt: str
     ) -> dict:
-        import anthropic
         logger.debug("Anthropic select_tool: %d tools, prompt=%s", len(tools), user_prompt[:80])
         api_tools = _build_tools_for_api(tools)
         response = await self.client.messages.create(
@@ -108,10 +107,10 @@ class OpenAIAdapter:
     def __init__(self, model: str = "gpt-4o", api_key: str | None = None, base_url: str | None = None):
         try:
             import openai
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "openai package required. Install with: pip install openai"
-            )
+            ) from err
         self.model = model
         kwargs: dict[str, Any] = {}
         if api_key:
@@ -172,10 +171,10 @@ class AnthropicVertexAdapter:
     ):
         try:
             from anthropic import AnthropicVertex
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "anthropic[vertex] package required. Install with: pip install 'anthropic[vertex]'"
-            )
+            ) from err
         kwargs: dict[str, Any] = {}
         if project:
             kwargs["project_id"] = project
@@ -244,10 +243,10 @@ class VertexAIAdapter:
     ):
         try:
             from google import genai
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "google-genai package required. Install with: pip install google-genai"
-            )
+            ) from err
         client_kwargs: dict[str, Any] = {}
         if api_key:
             client_kwargs["api_key"] = api_key
@@ -282,14 +281,14 @@ class VertexAIAdapter:
             model=self.model,
             contents=user_prompt,
             config=types.GenerateContentConfig(
-                tools=api_tools,
+                tools=api_tools,  # type: ignore[arg-type]
                 automatic_function_calling=types.AutomaticFunctionCallingConfig(
                     disable=True,
                 ),
             ),
         )
 
-        for part in response.candidates[0].content.parts:
+        for part in response.candidates[0].content.parts:  # type: ignore[index,union-attr]
             if part.function_call:
                 args = dict(part.function_call.args) if part.function_call.args else {}
                 return {"tool_name": part.function_call.name, "arguments": args}

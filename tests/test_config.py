@@ -8,7 +8,7 @@ from src.app.models import McpConfig, McpServerConfig
 @pytest.mark.asyncio
 async def test_load_empty_config(db):
     config = await load_config()
-    assert config.mcpServers == {}
+    assert config.mcp_servers == {}
 
 
 @pytest.mark.asyncio
@@ -19,19 +19,19 @@ async def test_load_config_with_server(db):
         "auth": False,
     })
     config = await load_config()
-    assert "test-server" in config.mcpServers
-    assert config.mcpServers["test-server"].url == "https://example.com/mcp"
+    assert "test-server" in config.mcp_servers
+    assert config.mcp_servers["test-server"].url == "https://example.com/mcp"
 
 
 @pytest.mark.asyncio
 async def test_save_config(db):
-    config = McpConfig(mcpServers={
+    config = McpConfig(mcp_servers={
         "my-server": McpServerConfig(url="https://example.com/mcp")
     })
     await save_config(config)
     loaded = await load_config()
-    assert "my-server" in loaded.mcpServers
-    assert loaded.mcpServers["my-server"].url == "https://example.com/mcp"
+    assert "my-server" in loaded.mcp_servers
+    assert loaded.mcp_servers["my-server"].url == "https://example.com/mcp"
 
 
 def test_get_env_var(monkeypatch):

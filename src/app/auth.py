@@ -11,10 +11,10 @@ from urllib.parse import urlencode, urlparse
 import httpx
 
 from .config import get_backend_port, get_env_var
-
-logger = logging.getLogger(__name__)
 from .database import delete_secret, get_secret, set_secret
 from .models import McpServerConfig
+
+logger = logging.getLogger(__name__)
 
 _SERVER_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,254}$")
 
@@ -44,8 +44,8 @@ def validate_url(url: str) -> str:
             addr = ipaddress.ip_address(sockaddr[0])
             if addr.is_private or addr.is_loopback or addr.is_link_local:
                 raise ValueError("URL must not resolve to a private/loopback address")
-    except socket.gaierror:
-        raise ValueError(f"Cannot resolve hostname: {hostname}")
+    except socket.gaierror as err:
+        raise ValueError(f"Cannot resolve hostname: {hostname}") from err
     return url
 
 
@@ -73,7 +73,8 @@ async def _get_bearer_token(server_name: str) -> str | None:
         return token
     bearer_entry = await get_secret(server_name, "bearer")
     if bearer_entry and "token" in bearer_entry:
-        return bearer_entry["token"]
+        token_val: str | None = bearer_entry["token"]
+        return token_val
     return None
 
 
@@ -84,7 +85,8 @@ async def set_bearer_token(server_name: str, token: str) -> None:
 async def _get_api_key(server_name: str) -> str | None:
     entry = await get_secret(server_name, "apikey")
     if entry and "key" in entry:
-        return entry["key"]
+        key_val: str | None = entry["key"]
+        return key_val
     return None
 
 
@@ -94,6 +96,7 @@ async def set_api_key(server_name: str, key: str) -> None:
 
 async def _register_dcr_client(server_config: McpServerConfig) -> tuple[str, str | None]:
     oauth = server_config.oauth
+    assert oauth is not None
     payload = {
         "client_name": "mcp-tools-fetch",
         "redirect_uris": [_get_callback_url()],
@@ -103,6 +106,7 @@ async def _register_dcr_client(server_config: McpServerConfig) -> tuple[str, str
     }
     if oauth.scopes:
         payload["scope"] = " ".join(oauth.scopes)
+    assert oauth.registration_endpoint is not None
     async with httpx.AsyncClient(verify=server_config.ssl_verify) as client:
         resp = await client.post(oauth.registration_endpoint, json=payload)
         if resp.status_code >= 400:
@@ -116,6 +120,7 @@ async def _register_dcr_client(server_config: McpServerConfig) -> tuple[str, str
 
 async def start_oauth_flow(server_name: str, server_config: McpServerConfig) -> str:
     oauth = server_config.oauth
+    assert oauth is not None
     client_id = oauth.client_id
     client_secret = None
 
@@ -194,7 +199,8 @@ async def handle_oauth_callback(state: str, code: str) -> str:
         "refresh_token": token_resp.get("refresh_token"),
         "token_type": token_resp.get("token_type", "Bearer"),
     })
-    return flow["server_name"]
+    server: str = flow["server_name"]
+    return server
 
 
 async def get_token(server_name: str, server_config: McpServerConfig) -> str | None:
@@ -217,7 +223,8 @@ async def get_token(server_name: str, server_config: McpServerConfig) -> str | N
 
     oauth_data = await get_secret(server_name, "oauth")
     if oauth_data and "access_token" in oauth_data:
-        return oauth_data["access_token"]
+        access_token: str | None = oauth_data["access_token"]
+        return access_token
 
     return None
 
@@ -279,7 +286,8 @@ async def refresh_access_token(
         "token_type": token_resp.get("token_type", "Bearer"),
     })
     logger.info("Token refreshed successfully for '%s'", server_name)
-    return token_resp["access_token"]
+    refreshed_token: str | None = token_resp["access_token"]
+    return refreshed_token
 
 
 async def clear_oauth_tokens(server_name: str) -> None:

@@ -36,14 +36,17 @@ async def test_list_llm_configs_with_file(client, tmp_path, monkeypatch):
 
     llm_config_path = tmp_path / "llm.json"
     configs = {
-        "test-config": {
-            "provider": "mock",
-            "model": "test-model",
+        "configs": {
+            "test-config": {
+                "provider": "mock",
+                "model": "test-model",
+            },
+            "another-config": {
+                "provider": "anthropic",
+                "model": "claude-3-5-sonnet-20241022",
+            },
         },
-        "another-config": {
-            "provider": "anthropic",
-            "model": "claude-3-5-sonnet-20241022",
-        },
+        "default": "test-config",
     }
     llm_config_path.write_text(json.dumps(configs))
 
@@ -59,7 +62,6 @@ async def test_list_llm_configs_with_file(client, tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_list_llm_configs_env_only(client, monkeypatch):
-    import os
 
     # Set environment variable for LLM provider
     monkeypatch.setenv("EVAL_LLM_PROVIDER", "mock")

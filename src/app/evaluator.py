@@ -150,7 +150,7 @@ def _compute_overall(dimensions: dict[str, dict]) -> float:
         dimensions[dim]["score"] * weight
         for dim, weight in WEIGHTS.items()
     )
-    return round(total, 1)
+    return float(round(total, 1))
 
 
 def _evaluate_single_tool(tool: dict) -> dict:

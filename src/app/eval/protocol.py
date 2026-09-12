@@ -88,7 +88,10 @@ def _check_name_valid(tool: dict) -> CheckResult:
             details={
                 "location": "name",
                 "current_value": repr(name),
-                "suggestion": "Provide a non-empty tool name using snake_case or camelCase (e.g., 'get_user', 'searchDocs').",
+                "suggestion": (
+                    "Provide a non-empty tool name using snake_case or camelCase "
+                    "(e.g., 'get_user', 'searchDocs')."
+                ),
             },
         )
     if " " in name:
@@ -121,7 +124,10 @@ def _check_description_present(tool: dict) -> CheckResult:
             details={
                 "location": "description",
                 "current_value": None,
-                "suggestion": "Add a description starting with an action verb, e.g., 'Retrieves user details by ID' or 'Creates a new invoice for a customer'.",
+                "suggestion": (
+                    "Add a description starting with an action verb, e.g., "
+                    "'Retrieves user details by ID' or 'Creates a new invoice for a customer'."
+                ),
             },
         )
     if not isinstance(desc, str):
@@ -161,7 +167,10 @@ def _check_input_schema_structure(tool: dict) -> CheckResult:
             details={
                 "location": "inputSchema",
                 "current_value": repr(schema)[:100],
-                "suggestion": "Replace inputSchema with a JSON Schema object, e.g., {\"type\": \"object\", \"properties\": {...}}.",
+                "suggestion": (
+                    'Replace inputSchema with a JSON Schema object, '
+                    'e.g., {"type": "object", "properties": {...}}.'
+                ),
             },
         )
     schema_type = schema.get("type")
@@ -174,7 +183,10 @@ def _check_input_schema_structure(tool: dict) -> CheckResult:
             details={
                 "location": "inputSchema.type",
                 "current_value": schema_type,
-                "suggestion": "Set inputSchema.type to 'object'. MCP tools expect parameters as an object with named properties.",
+                "suggestion": (
+                    "Set inputSchema.type to 'object'. MCP tools expect parameters "
+                    "as an object with named properties."
+                ),
             },
         )
     return CheckResult(
@@ -216,7 +228,10 @@ def _check_schema_properties(tool: dict) -> list[CheckResult]:
                     "property": pname,
                     "location": f"inputSchema.properties.{pname}",
                     "current_value": repr(pdef)[:100],
-                    "suggestion": f"Define '{pname}' as a JSON Schema object, e.g., {{\"type\": \"string\", \"description\": \"...\"}}.",
+                    "suggestion": (
+                        f"Define '{pname}' as a JSON Schema object, "
+                        f'e.g., {{"type": "string", "description": "..."}}.'
+                    ),
                 },
             ))
             continue
@@ -230,7 +245,10 @@ def _check_schema_properties(tool: dict) -> list[CheckResult]:
                 details={
                     "property": pname,
                     "location": f"inputSchema.properties.{pname}",
-                    "suggestion": f"Add a 'type' field (string, number, boolean, array, object) to the '{pname}' property definition.",
+                    "suggestion": (
+                        f"Add a 'type' field (string, number, boolean, array, object) "
+                        f"to the '{pname}' property definition."
+                    ),
                 },
             ))
 
@@ -282,7 +300,10 @@ def _check_required_valid(tool: dict) -> CheckResult:
                 "invalid_refs": invalid,
                 "location": "inputSchema.required",
                 "current_value": invalid,
-                "suggestion": f"Either add {invalid} to inputSchema.properties, or remove them from the required array.",
+                "suggestion": (
+                    f"Either add {invalid} to inputSchema.properties, "
+                    f"or remove them from the required array."
+                ),
             },
         )
     return CheckResult(
@@ -347,7 +368,10 @@ def _check_additional_properties(tool: dict) -> CheckResult:
             details={
                 "location": "inputSchema.additionalProperties",
                 "current_value": "(not set)",
-                "suggestion": "Add \"additionalProperties\": false to inputSchema to prevent unexpected parameters from being passed.",
+                "suggestion": (
+                    'Add "additionalProperties": false to inputSchema to prevent '
+                    'unexpected parameters from being passed.'
+                ),
             },
         )
     return CheckResult(

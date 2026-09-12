@@ -1,8 +1,7 @@
-import os
 
 import pytest
 
-from src.app.eval.llm_config import load_llm_config, get_eval_adapter
+from src.app.eval.llm_config import get_eval_adapter, load_llm_config
 from src.app.eval.model_adapter import MockAdapter
 
 

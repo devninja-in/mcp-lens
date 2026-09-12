@@ -1,8 +1,5 @@
 import asyncio
-from pathlib import Path
 from textwrap import dedent
-
-import pytest
 
 from src.app.eval.benchmark import load_benchmark, run_benchmark
 from src.app.eval.model_adapter import MockAdapter

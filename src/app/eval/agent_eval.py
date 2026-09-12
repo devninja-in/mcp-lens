@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .models import CheckResult, LayerResult, Severity, Status, ToolResult
+from .models import CheckResult, Severity, Status, ToolResult
 
 
 async def evaluate_tool_selection(

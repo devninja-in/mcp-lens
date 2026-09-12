@@ -1,8 +1,6 @@
 import asyncio
 from dataclasses import dataclass
 
-import pytest
-
 from src.app.eval.agent_eval import (
     _is_subsequence,
     _values_match,

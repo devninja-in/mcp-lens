@@ -2,7 +2,6 @@
 
 import asyncio
 
-import pytest
 import yaml
 
 from src.app.eval.llm_eval import (
@@ -12,7 +11,6 @@ from src.app.eval.llm_eval import (
 )
 from src.app.eval.model_adapter import MockAdapter
 from src.app.eval.models import Status
-
 
 SAMPLE_TOOLS = [
     {

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class OAuthConfig(BaseModel):
@@ -30,7 +30,9 @@ class McpServerConfig(BaseModel):
 
 
 class McpConfig(BaseModel):
-    mcpServers: dict[str, McpServerConfig] = {}
+    model_config = ConfigDict(populate_by_name=True)
+
+    mcp_servers: dict[str, McpServerConfig] = Field(default_factory=dict, alias="mcpServers")
 
 
 class ServerCreateRequest(BaseModel):
@@ -41,7 +43,7 @@ class ServerCreateRequest(BaseModel):
 class ToolInfo(BaseModel):
     name: str
     description: str | None = None
-    inputSchema: dict | None = None
+    input_schema: dict | None = None
 
 
 class ApiResponse(BaseModel):

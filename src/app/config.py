@@ -20,19 +20,19 @@ async def load_config() -> McpConfig:
         for name, data in servers_data.items()
     }
     logger.debug("Loaded config with %d servers", len(servers))
-    return McpConfig(mcpServers=servers)
+    return McpConfig(**{"mcpServers": servers})
 
 
 async def save_config(config: McpConfig) -> None:
-    from .database import get_all_servers, set_server_config, delete_server_config
+    from .database import delete_server_config, get_all_servers, set_server_config
 
     existing = await get_all_servers()
     for name in existing:
-        if name not in config.mcpServers:
+        if name not in config.mcp_servers:
             await delete_server_config(name)
-    for name, server in config.mcpServers.items():
+    for name, server in config.mcp_servers.items():
         await set_server_config(name, server.model_dump(exclude_none=True))
-    logger.info("Saved config with %d servers", len(config.mcpServers))
+    logger.info("Saved config with %d servers", len(config.mcp_servers))
 
 
 def get_env_var(name: str) -> str | None:

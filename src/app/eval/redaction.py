@@ -35,9 +35,8 @@ def redact_secrets(data: Any) -> Any:
 
 
 def _redact_value(key: str, value: Any) -> Any:
-    if isinstance(key, str) and key.lower() in _SECRET_KEY_NAMES:
-        if isinstance(value, str) and value:
-            return _REDACTED
+    if isinstance(key, str) and key.lower() in _SECRET_KEY_NAMES and isinstance(value, str) and value:
+        return _REDACTED
     return redact_secrets(value)
 
 

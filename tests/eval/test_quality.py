@@ -221,7 +221,7 @@ class TestEvaluateToolsCompat:
         assert "name" in tool_result
         assert "overall_score" in tool_result
         assert "dimensions" in tool_result
-        for dim_name, dim_data in tool_result["dimensions"].items():
+        for _dim_name, dim_data in tool_result["dimensions"].items():
             assert "score" in dim_data
             assert "checks" in dim_data
 

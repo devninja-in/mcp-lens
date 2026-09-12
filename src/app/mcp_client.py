@@ -78,7 +78,8 @@ def _parse_sse_response(text: str) -> dict:
             try:
                 parsed = json.loads(data)
                 if "result" in parsed or "error" in parsed:
-                    return parsed
+                    rpc_response: dict = parsed
+                    return rpc_response
             except json.JSONDecodeError:
                 continue
     raise ValueError("No valid JSON-RPC response found in SSE stream")
@@ -93,7 +94,7 @@ def _get_api_key_dict(server_config: McpServerConfig) -> dict | None:
     return None
 
 
-class ReAuthRequired(Exception):
+class ReAuthRequiredError(Exception):
     pass
 
 
@@ -113,7 +114,7 @@ async def _try_request_with_refresh(
         raise
 
     if server_config.auth_mode not in ("oauth", "dcr"):
-        raise ReAuthRequired(
+        raise ReAuthRequiredError(
             f"Server '{server_name}' returned {status}. Check your token."
         )
 
@@ -121,7 +122,7 @@ async def _try_request_with_refresh(
     new_token = await refresh_access_token(server_name, server_config)
     if not new_token:
         await clear_oauth_tokens(server_name)
-        raise ReAuthRequired(
+        raise ReAuthRequiredError(
             f"Token expired for '{server_name}'. Re-authentication required."
         )
 
@@ -130,9 +131,9 @@ async def _try_request_with_refresh(
     except httpx.HTTPStatusError as e:
         if e.response.status_code in (401, 403):
             await clear_oauth_tokens(server_name)
-            raise ReAuthRequired(
+            raise ReAuthRequiredError(
                 f"Token expired for '{server_name}'. Re-authentication required."
-            )
+            ) from e
         raise
 
 
@@ -156,7 +157,10 @@ async def mcp_initialize(
             api_key_config=akc,
         )
 
-    return await _try_request_with_refresh(server_name, server_config, do_init)
+    result: tuple[dict, str | None] = await _try_request_with_refresh(
+        server_name, server_config, do_init,
+    )
+    return result
 
 
 async def mcp_list_tools(
@@ -207,6 +211,10 @@ async def mcp_list_tools(
         if "error" in result:
             raise RuntimeError(f"tools/list failed: {result['error']}")
 
-        return result.get("result", {}).get("tools", [])
+        tools: list[dict] = result.get("result", {}).get("tools", [])
+        return tools
 
-    return await _try_request_with_refresh(server_name, server_config, do_list_tools)
+    tools_result: list[dict] = await _try_request_with_refresh(
+        server_name, server_config, do_list_tools,
+    )
+    return tools_result

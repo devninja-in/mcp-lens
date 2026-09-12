@@ -55,7 +55,10 @@ def _check_desc_actionable(tool: dict) -> CheckResult:
             details={
                 "location": "description",
                 "current_value": None,
-                "suggestion": "Add a description starting with an action verb like 'Get', 'Create', 'Search', 'Delete', etc.",
+                "suggestion": (
+                    "Add a description starting with an action verb like "
+                    "'Get', 'Create', 'Search', 'Delete', etc."
+                ),
             },
         )
     first_word = desc.lower().split()[0] if desc.split() else ""
@@ -73,7 +76,10 @@ def _check_desc_actionable(tool: dict) -> CheckResult:
         details={
             "location": "description",
             "current_value": desc[:80] + ("..." if len(desc) > 80 else ""),
-            "suggestion": f"Rephrase to start with an action verb (e.g., 'Get', 'List', 'Create') instead of '{first_word}'.",
+            "suggestion": (
+                f"Rephrase to start with an action verb (e.g., 'Get', 'List', 'Create') "
+                f"instead of '{first_word}'."
+            ),
         },
     )
 
@@ -89,7 +95,10 @@ def _check_desc_adequate_length(tool: dict) -> CheckResult:
             details={
                 "location": "description",
                 "current_value": None,
-                "suggestion": "Add a description of at least 20 characters explaining what the tool does and when to use it.",
+                "suggestion": (
+                    "Add a description of at least 20 characters explaining what the tool does "
+                    "and when to use it."
+                ),
             },
         )
     if len(desc) <= 20:
@@ -101,7 +110,10 @@ def _check_desc_adequate_length(tool: dict) -> CheckResult:
             details={
                 "location": "description",
                 "current_value": desc,
-                "suggestion": "Expand the description to at least 20 characters. Explain what the tool does, its inputs, and expected output.",
+                "suggestion": (
+                    "Expand the description to at least 20 characters. Explain what the tool does, "
+                    "its inputs, and expected output."
+                ),
             },
         )
     return CheckResult(
@@ -130,7 +142,10 @@ def _check_desc_no_filler(tool: dict) -> CheckResult:
                 details={
                     "location": "description",
                     "current_value": desc[:80] + ("..." if len(desc) > 80 else ""),
-                    "suggestion": f"Remove '{filler}' and start directly with an action verb describing the tool's behavior.",
+                    "suggestion": (
+                        f"Remove '{filler}' and start directly with an action verb "
+                        f"describing the tool's behavior."
+                    ),
                 },
             )
     return CheckResult(
@@ -156,7 +171,10 @@ def _check_desc_explains_usage(tool: dict) -> CheckResult:
         details={
             "location": "description",
             "current_value": desc,
-            "suggestion": "Add more context: what parameters it expects, what it returns, and when an agent should choose this tool over alternatives.",
+            "suggestion": (
+                "Add more context: what parameters it expects, what it returns, and when "
+                "an agent should choose this tool over alternatives."
+            ),
         },
     )
 
@@ -189,7 +207,10 @@ def _check_param_all_described(tool: dict) -> CheckResult:
             details={
                 "missing": missing,
                 "location": ", ".join(f"inputSchema.properties.{m}" for m in missing),
-                "suggestion": f"Add a 'description' field to each of: {', '.join(missing)}. Describe what the parameter controls and its expected format.",
+                "suggestion": (
+                    f"Add a 'description' field to each of: {', '.join(missing)}. "
+                    f"Describe what the parameter controls and its expected format."
+                ),
             },
         )
     return CheckResult(
@@ -293,7 +314,10 @@ def _check_naming_consistent(tool: dict) -> CheckResult:
         details={
             "location": "name",
             "current_value": name,
-            "suggestion": f"Rename to snake_case (e.g., '{name.lower()}') or camelCase for consistency with other tools.",
+            "suggestion": (
+                f"Rename to snake_case (e.g., '{name.lower()}') or camelCase "
+                f"for consistency with other tools."
+            ),
         },
     )
 
@@ -323,7 +347,10 @@ def _check_naming_verb_prefix(tool: dict) -> CheckResult:
         details={
             "location": "name",
             "current_value": name,
-            "suggestion": f"Prefix the name with an action verb like 'get_', 'list_', 'create_', 'search_' (e.g., 'get_{name}' or 'search_{name}').",
+            "suggestion": (
+                f"Prefix the name with an action verb like 'get_', 'list_', 'create_', 'search_' "
+                f"(e.g., 'get_{name}' or 'search_{name}')."
+            ),
         },
     )
 
@@ -339,7 +366,10 @@ def _check_annotation_hints(tool: dict) -> CheckResult:
             details={
                 "location": "annotations",
                 "current_value": None,
-                "suggestion": 'Add annotations: {"readOnlyHint": true/false, "destructiveHint": true/false} to help agents understand tool safety.',
+                "suggestion": (
+                    'Add annotations: {"readOnlyHint": true/false, "destructiveHint": true/false} '
+                    'to help agents understand tool safety.'
+                ),
             },
         )
     has_readonly = "readOnlyHint" in annotations
@@ -531,7 +561,7 @@ def _compute_overall(dimensions: dict[str, dict]) -> float:
         dimensions[dim]["score"] * weight
         for dim, weight in WEIGHTS.items()
     )
-    return round(total, 1)
+    return float(round(total, 1))
 
 
 def _evaluate_single_tool(tool: dict) -> dict:
