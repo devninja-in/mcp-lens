@@ -510,11 +510,11 @@ export default function EvaluationView({ serverName, onToast, onReportChange }: 
                           className="w-full text-left px-3 py-2 flex justify-between items-center hover:bg-gray-50 text-sm"
                         >
                           <div className="flex items-center gap-2">
-                            <span className={`w-5 h-5 flex items-center justify-center rounded text-xs font-bold ${
-                              tool.passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                              {tool.passed ? '✓' : '✗'}
-                            </span>
+                            {(() => { const badge = toolStatusBadge(tool.checks); return (
+                              <span className={`w-5 h-5 flex items-center justify-center rounded text-xs font-bold ${badge.bg}`}>
+                                {badge.icon}
+                              </span>
+                            ); })()}
                             <span className="font-mono text-gray-800">{tool.tool_name}</span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -609,11 +609,11 @@ export default function EvaluationView({ serverName, onToast, onReportChange }: 
                           className="w-full text-left px-3 py-2 flex justify-between items-center hover:bg-gray-50 text-sm"
                         >
                           <div className="flex items-center gap-2">
-                            <span className={`w-5 h-5 flex items-center justify-center rounded text-xs font-bold ${
-                              tool.passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                              {tool.passed ? '✓' : '✗'}
-                            </span>
+                            {(() => { const badge = toolStatusBadge(tool.checks); return (
+                              <span className={`w-5 h-5 flex items-center justify-center rounded text-xs font-bold ${badge.bg}`}>
+                                {badge.icon}
+                              </span>
+                            ); })()}
                             <span className="font-mono text-gray-800">{tool.tool_name}</span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -795,6 +795,14 @@ function CheckRow({ check, checkKey, falsePositives, onToggleFP }: CheckRowProps
       )}
     </div>
   )
+}
+
+function toolStatusBadge(checks: FullCheckResult[]): { icon: string; bg: string } {
+  const hasFail = checks.some(c => c.status === 'fail')
+  const hasWarn = checks.some(c => c.status === 'warn')
+  if (hasFail) return { icon: '✗', bg: 'bg-red-100 text-red-700' }
+  if (hasWarn) return { icon: '!', bg: 'bg-yellow-100 text-yellow-700' }
+  return { icon: '✓', bg: 'bg-green-100 text-green-700' }
 }
 
 function StatusCounts({ checks }: { checks: FullCheckResult[] }) {
