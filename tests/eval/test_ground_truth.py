@@ -2,7 +2,6 @@
 
 import asyncio
 
-import pytest
 import yaml
 
 from src.app.eval.llm_eval import (
@@ -12,7 +11,6 @@ from src.app.eval.llm_eval import (
 )
 from src.app.eval.model_adapter import MockAdapter
 from src.app.eval.models import Status
-
 
 SAMPLE_TOOLS = [
     {
@@ -146,10 +144,12 @@ class TestToolSelectionWithGroundTruth:
         assert check.details["selected"] == "get_user_profile"
 
     def test_all_prompts_tested(self):
-        gt = [{
-            "expected_tool_selection": ["search_users"],
-            "prompts": ["Find users named Alice", "Look up users with email @example.com"],
-        }]
+        gt = [
+            {
+                "expected_tool_selection": ["search_users"],
+                "prompts": ["Find users named Alice", "Look up users with email @example.com"],
+            }
+        ]
         adapter = MockAdapter()
         results = _run(_check_tool_selection(SAMPLE_TOOLS[:1], adapter, ground_truth=gt))
         assert len(results) == 1
@@ -180,11 +180,13 @@ class TestToolSelectionWithGroundTruth:
 
 class TestArgGenerationWithGroundTruth:
     def test_expected_args_match_passes(self):
-        gt = [{
-            "expected_tool_selection": ["search_users"],
-            "prompts": ["Find users named Alice"],
-            "expected_args": {"query": "Alice"},
-        }]
+        gt = [
+            {
+                "expected_tool_selection": ["search_users"],
+                "prompts": ["Find users named Alice"],
+                "expected_args": {"query": "Alice"},
+            }
+        ]
 
         class MatchingAdapter(MockAdapter):
             async def select_tool(self, tools, prompt):
@@ -202,11 +204,13 @@ class TestArgGenerationWithGroundTruth:
         assert len(pass_checks) >= 1
 
     def test_expected_args_mismatch_warns(self):
-        gt = [{
-            "expected_tool_selection": ["search_users"],
-            "prompts": ["Find users named Alice"],
-            "expected_args": {"query": "Alice"},
-        }]
+        gt = [
+            {
+                "expected_tool_selection": ["search_users"],
+                "prompts": ["Find users named Alice"],
+                "expected_args": {"query": "Alice"},
+            }
+        ]
 
         class MismatchAdapter(MockAdapter):
             async def select_tool(self, tools, prompt):

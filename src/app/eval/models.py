@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class Status(str, Enum):
-    PASS = "pass"
+class Status(StrEnum):
+    PASS = "pass"  # noqa: S105
     FAIL = "fail"
     WARN = "warn"
     SKIP = "skip"
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -45,8 +45,7 @@ class ToolResult:
     @property
     def passed(self) -> bool:
         return not any(
-            c.status == Status.FAIL and c.severity in (Severity.CRITICAL, Severity.HIGH)
-            for c in self.checks
+            c.status == Status.FAIL and c.severity in (Severity.CRITICAL, Severity.HIGH) for c in self.checks
         )
 
     @property

@@ -59,8 +59,7 @@ def compute_overall_score(
         if fail_layer in layers:
             lr = layers[fail_layer]
             has_critical_fail = any(
-                c.status == Status.FAIL and c.severity == Severity.CRITICAL
-                for tr in lr.tools for c in tr.checks
+                c.status == Status.FAIL and c.severity == Severity.CRITICAL for tr in lr.tools for c in tr.checks
             )
             if has_critical_fail:
                 gate_passed = False
@@ -76,7 +75,9 @@ def apply_scoring(report: EvalReport, config: ScoringConfig | None = None) -> Ev
     report.gate_passed = gate
     logger.info(
         "Scoring complete for '%s': overall=%.1f gate=%s (layers: %s)",
-        report.server_name, score, gate,
+        report.server_name,
+        score,
+        gate,
         ", ".join(f"{k}={v.score:.1f}" for k, v in report.layers.items()),
     )
     return report

@@ -66,18 +66,20 @@ def detect_overlaps(tools: list[dict], threshold: float = 0.6) -> list[CheckResu
             combined = 0.3 * ns + 0.4 * ds + 0.3 * ss
 
             if combined > threshold:
-                results.append(CheckResult(
-                    check_id="overlap.tool_pair",
-                    status=Status.WARN,
-                    message=f"Tools '{na}' and '{nb}' may overlap (similarity: {combined:.2f})",
-                    severity=Severity.MEDIUM,
-                    details={
-                        "tool_a": na,
-                        "tool_b": nb,
-                        "name_similarity": round(ns, 3),
-                        "desc_similarity": round(ds, 3),
-                        "schema_overlap": round(ss, 3),
-                        "combined": round(combined, 3),
-                    },
-                ))
+                results.append(
+                    CheckResult(
+                        check_id="overlap.tool_pair",
+                        status=Status.WARN,
+                        message=f"Tools '{na}' and '{nb}' may overlap (similarity: {combined:.2f})",
+                        severity=Severity.MEDIUM,
+                        details={
+                            "tool_a": na,
+                            "tool_b": nb,
+                            "name_similarity": round(ns, 3),
+                            "desc_similarity": round(ds, 3),
+                            "schema_overlap": round(ss, 3),
+                            "combined": round(combined, 3),
+                        },
+                    )
+                )
     return results

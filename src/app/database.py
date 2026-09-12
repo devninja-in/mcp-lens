@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import Boolean, DateTime, String, Text, select, text
@@ -94,32 +94,33 @@ async def get_secret(server_name: str, secret_type: str) -> dict | None:
         result = await session.get(McpSecret, (server_name, secret_type))
         if result is None:
             return None
-        return json.loads(result.secret_data)
+        data: dict = json.loads(result.secret_data)
+        return data
 
 
 async def set_secret(server_name: str, secret_type: str, data: dict) -> None:
-    async with _get_session() as session:
-        async with session.begin():
-            existing = await session.get(McpSecret, (server_name, secret_type))
-            now = datetime.now(timezone.utc)
-            if existing:
-                existing.secret_data = json.dumps(data)
-                existing.updated_at = now
-            else:
-                session.add(McpSecret(
+    async with _get_session() as session, session.begin():
+        existing = await session.get(McpSecret, (server_name, secret_type))
+        now = datetime.now(UTC)
+        if existing:
+            existing.secret_data = json.dumps(data)
+            existing.updated_at = now
+        else:
+            session.add(
+                McpSecret(
                     server_name=server_name,
                     secret_type=secret_type,
                     secret_data=json.dumps(data),
                     updated_at=now,
-                ))
+                )
+            )
 
 
 async def delete_secret(server_name: str, secret_type: str) -> None:
-    async with _get_session() as session:
-        async with session.begin():
-            existing = await session.get(McpSecret, (server_name, secret_type))
-            if existing:
-                await session.delete(existing)
+    async with _get_session() as session, session.begin():
+        existing = await session.get(McpSecret, (server_name, secret_type))
+        if existing:
+            await session.delete(existing)
 
 
 async def get_all_servers() -> dict[str, dict]:
@@ -134,31 +135,32 @@ async def get_server_config(name: str) -> dict | None:
         result = await session.get(McpServer, name)
         if result is None:
             return None
-        return json.loads(result.config_data)
+        data: dict = json.loads(result.config_data)
+        return data
 
 
 async def set_server_config(name: str, config_data: dict) -> None:
-    async with _get_session() as session:
-        async with session.begin():
-            existing = await session.get(McpServer, name)
-            now = datetime.now(timezone.utc)
-            if existing:
-                existing.config_data = json.dumps(config_data)
-                existing.updated_at = now
-            else:
-                session.add(McpServer(
+    async with _get_session() as session, session.begin():
+        existing = await session.get(McpServer, name)
+        now = datetime.now(UTC)
+        if existing:
+            existing.config_data = json.dumps(config_data)
+            existing.updated_at = now
+        else:
+            session.add(
+                McpServer(
                     name=name,
                     config_data=json.dumps(config_data),
                     updated_at=now,
-                ))
+                )
+            )
 
 
 async def delete_server_config(name: str) -> None:
-    async with _get_session() as session:
-        async with session.begin():
-            existing = await session.get(McpServer, name)
-            if existing:
-                await session.delete(existing)
+    async with _get_session() as session, session.begin():
+        existing = await session.get(McpServer, name)
+        if existing:
+            await session.delete(existing)
 
 
 async def get_eval_report(server_name: str) -> dict | None:
@@ -166,25 +168,27 @@ async def get_eval_report(server_name: str) -> dict | None:
         result = await session.get(EvalResult, server_name)
         if result is None:
             return None
-        return json.loads(result.report_data)
+        data: dict = json.loads(result.report_data)
+        return data
 
 
 async def save_eval_report(server_name: str, report_data: dict, has_llm: bool = False) -> None:
-    async with _get_session() as session:
-        async with session.begin():
-            existing = await session.get(EvalResult, server_name)
-            now = datetime.now(timezone.utc)
-            if existing:
-                existing.report_data = json.dumps(report_data)
-                existing.has_llm = has_llm
-                existing.updated_at = now
-            else:
-                session.add(EvalResult(
+    async with _get_session() as session, session.begin():
+        existing = await session.get(EvalResult, server_name)
+        now = datetime.now(UTC)
+        if existing:
+            existing.report_data = json.dumps(report_data)
+            existing.has_llm = has_llm
+            existing.updated_at = now
+        else:
+            session.add(
+                EvalResult(
                     server_name=server_name,
                     report_data=json.dumps(report_data),
                     has_llm=has_llm,
                     updated_at=now,
-                ))
+                )
+            )
 
 
 async def get_ground_truth(server_name: str) -> dict | None:
@@ -193,31 +197,33 @@ async def get_ground_truth(server_name: str) -> dict | None:
         if result is None:
             return None
         import yaml
-        return yaml.safe_load(result.yaml_data)
+
+        data: dict = yaml.safe_load(result.yaml_data)
+        return data
 
 
 async def save_ground_truth(server_name: str, yaml_content: str) -> None:
-    async with _get_session() as session:
-        async with session.begin():
-            existing = await session.get(GroundTruth, server_name)
-            now = datetime.now(timezone.utc)
-            if existing:
-                existing.yaml_data = yaml_content
-                existing.updated_at = now
-            else:
-                session.add(GroundTruth(
+    async with _get_session() as session, session.begin():
+        existing = await session.get(GroundTruth, server_name)
+        now = datetime.now(UTC)
+        if existing:
+            existing.yaml_data = yaml_content
+            existing.updated_at = now
+        else:
+            session.add(
+                GroundTruth(
                     server_name=server_name,
                     yaml_data=yaml_content,
                     updated_at=now,
-                ))
+                )
+            )
 
 
 async def delete_ground_truth(server_name: str) -> None:
-    async with _get_session() as session:
-        async with session.begin():
-            existing = await session.get(GroundTruth, server_name)
-            if existing:
-                await session.delete(existing)
+    async with _get_session() as session, session.begin():
+        existing = await session.get(GroundTruth, server_name)
+        if existing:
+            await session.delete(existing)
 
 
 async def _migrate_tokens_json() -> None:
@@ -236,20 +242,20 @@ async def _migrate_tokens_json() -> None:
     for key, value in tokens.items():
         if key.endswith("_bearer"):
             server_name = key[:-7]
-            secret_type = "bearer"
+            secret_type = "bearer"  # noqa: S105
         elif key.endswith("_apikey"):
             server_name = key[:-7]
-            secret_type = "apikey"
+            secret_type = "apikey"  # noqa: S105
         elif key.endswith("_dcr"):
             server_name = key[:-4]
-            secret_type = "dcr"
+            secret_type = "dcr"  # noqa: S105
         elif key.endswith("_sso"):
             server_name = key[:-4]
-            secret_type = "bearer"
+            secret_type = "bearer"  # noqa: S105
             value = {"token": value.get("token", "")} if isinstance(value, dict) else {"token": value}
         else:
             server_name = key
-            secret_type = "oauth"
+            secret_type = "oauth"  # noqa: S105
         await set_secret(server_name, secret_type, value)
 
     logger.info("Migrated %d entries from tokens.json to database", len(tokens))

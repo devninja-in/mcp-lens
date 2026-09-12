@@ -20,11 +20,14 @@ async def client(tmp_path, monkeypatch):
     db_module._engine = None
     db_module._session_factory = None
     await db_module.init_db()
-    await set_server_config("test-server", {
-        "url": "https://example.com/mcp",
-        "enabled": True,
-        "auth": False,
-    })
+    await set_server_config(
+        "test-server",
+        {
+            "url": "https://example.com/mcp",
+            "enabled": True,
+            "auth": False,
+        },
+    )
     with TestClient(app, raise_server_exceptions=False) as c:
         yield c
     await db_module.dispose_db()

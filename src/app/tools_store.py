@@ -10,7 +10,7 @@ TOOLS_DIR = Path("tools")
 
 
 def _validate_server_name(server_name: str) -> None:
-    if not re.fullmatch(r'[A-Za-z0-9_\-]+', server_name):
+    if not re.fullmatch(r"[A-Za-z0-9_\-]+", server_name):
         raise ValueError(f"Invalid server name: {server_name!r}")
 
 

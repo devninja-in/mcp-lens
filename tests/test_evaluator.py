@@ -22,16 +22,16 @@ class TestScoreDescription:
         assert result["score"] == 60
 
     def test_good_description(self):
-        result = _score_description({
-            "description": "Search for documents matching a query string and return paginated results with metadata"
-        })
+        result = _score_description(
+            {"description": "Search for documents matching a query string and return paginated results with metadata"}
+        )
         assert result["score"] == 100
         assert all(result["checks"].values())
 
     def test_generic_filler(self):
-        result = _score_description({
-            "description": "This tool searches for documents matching a query string and returns results"
-        })
+        result = _score_description(
+            {"description": "This tool searches for documents matching a query string and returns results"}
+        )
         assert result["checks"]["no_generic_filler"] is False
         assert result["score"] == 80
 
@@ -53,42 +53,48 @@ class TestScoreInputSchema:
         assert result["score"] == 25
 
     def test_complete_schema(self):
-        result = _score_input_schema({
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "Search query"},
-                    "limit": {"type": "integer", "description": "Max results"},
-                },
+        result = _score_input_schema(
+            {
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query"},
+                        "limit": {"type": "integer", "description": "Max results"},
+                    },
+                }
             }
-        })
+        )
         assert result["score"] == 100
 
     def test_missing_descriptions(self):
-        result = _score_input_schema({
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string"},
-                    "limit": {"type": "integer"},
-                },
+        result = _score_input_schema(
+            {
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string"},
+                        "limit": {"type": "integer"},
+                    },
+                }
             }
-        })
+        )
         assert result["checks"]["all_have_descriptions"] is False
         assert result["score"] == 75
 
     def test_anyof_type(self):
-        result = _score_input_schema({
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "value": {
-                        "anyOf": [{"type": "string"}, {"type": "integer"}],
-                        "description": "A value",
-                    }
-                },
+        result = _score_input_schema(
+            {
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "anyOf": [{"type": "string"}, {"type": "integer"}],
+                            "description": "A value",
+                        }
+                    },
+                }
             }
-        })
+        )
         assert result["checks"]["all_have_types"] is True
         assert result["score"] == 100
 
@@ -99,32 +105,38 @@ class TestScoreRequiredFields:
         assert result["score"] == 100
 
     def test_has_required(self):
-        result = _score_required_fields({
-            "inputSchema": {
-                "type": "object",
-                "properties": {"q": {"type": "string"}},
-                "required": ["q"],
+        result = _score_required_fields(
+            {
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"q": {"type": "string"}},
+                    "required": ["q"],
+                }
             }
-        })
+        )
         assert result["score"] == 100
 
     def test_missing_required(self):
-        result = _score_required_fields({
-            "inputSchema": {
-                "type": "object",
-                "properties": {"q": {"type": "string"}},
+        result = _score_required_fields(
+            {
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"q": {"type": "string"}},
+                }
             }
-        })
+        )
         assert result["score"] == 0
 
     def test_empty_required(self):
-        result = _score_required_fields({
-            "inputSchema": {
-                "type": "object",
-                "properties": {"q": {"type": "string"}},
-                "required": [],
+        result = _score_required_fields(
+            {
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"q": {"type": "string"}},
+                    "required": [],
+                }
             }
-        })
+        )
         assert result["checks"]["has_required_array"] is True
         assert result["checks"]["required_non_empty"] is False
         assert result["score"] == 50
@@ -165,16 +177,20 @@ class TestScoreAnnotations:
         assert result["score"] == 0
 
     def test_full_annotations(self):
-        result = _score_annotations({
-            "annotations": {"title": "Get Users", "readOnlyHint": True},
-            "outputSchema": {"type": "object"},
-        })
+        result = _score_annotations(
+            {
+                "annotations": {"title": "Get Users", "readOnlyHint": True},
+                "outputSchema": {"type": "object"},
+            }
+        )
         assert result["score"] == 100
 
     def test_partial_annotations(self):
-        result = _score_annotations({
-            "annotations": {"title": "Get Users"},
-        })
+        result = _score_annotations(
+            {
+                "annotations": {"title": "Get Users"},
+            }
+        )
         assert result["checks"]["has_annotations"] is True
         assert result["checks"]["has_title"] is True
         assert result["checks"]["has_hint"] is False

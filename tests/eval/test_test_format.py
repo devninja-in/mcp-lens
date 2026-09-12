@@ -1,15 +1,13 @@
-import pytest
-import yaml
 from pathlib import Path
 
-from src.app.eval.test_format import (
-    load_test_suite,
-    load_all_test_suites,
-    generate_negative_tests,
-    generate_boundary_tests,
-)
-from src.app.eval.models import Assertion, TestCase, TestSuite
+import yaml
 
+from src.app.eval.test_format import (
+    generate_boundary_tests,
+    generate_negative_tests,
+    load_all_test_suites,
+    load_test_suite,
+)
 
 VALID_YAML = {
     "server": "test-server",

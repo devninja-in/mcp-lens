@@ -1,15 +1,14 @@
 import asyncio
+import json
 
-from src.app.eval.mock_server import GOOD_TOOLS, BAD_TOOLS, get_mock_tools
+from src.app.eval.mock_server import BAD_TOOLS, GOOD_TOOLS, get_mock_tools
+from src.app.eval.models import EvalReport, Severity, Status
+from src.app.eval.overlap import detect_overlaps
 from src.app.eval.protocol import check_protocol_all
 from src.app.eval.quality import check_quality_all
-from src.app.eval.security import check_security_all
-from src.app.eval.overlap import detect_overlaps
-from src.app.eval.scoring import apply_scoring, compute_layer_score
 from src.app.eval.report import render_json, render_text
-from src.app.eval.models import EvalReport, Severity, Status
-
-import json
+from src.app.eval.scoring import apply_scoring
+from src.app.eval.security import check_security_all
 
 
 class TestEndToEndGoodTools:
@@ -27,8 +26,7 @@ class TestEndToEndGoodTools:
         result = check_security_all(GOOD_TOOLS)
         assert result.layer == "security"
         critical_fails = [
-            c for tr in result.tools for c in tr.checks
-            if c.status == Status.FAIL and c.severity == Severity.CRITICAL
+            c for tr in result.tools for c in tr.checks if c.status == Status.FAIL and c.severity == Severity.CRITICAL
         ]
         assert len(critical_fails) == 0
 
@@ -83,8 +81,7 @@ class TestEndToEndBadTools:
     def test_security_finds_issues(self):
         result = check_security_all(BAD_TOOLS)
         critical = [
-            c for tr in result.tools for c in tr.checks
-            if c.status == Status.FAIL and c.severity == Severity.CRITICAL
+            c for tr in result.tools for c in tr.checks if c.status == Status.FAIL and c.severity == Severity.CRITICAL
         ]
         assert len(critical) > 0
 
@@ -111,8 +108,8 @@ class TestEndToEndBadTools:
 
 class TestEndToEndWithLlm:
     def test_full_pipeline_with_llm_layer(self):
-        from src.app.eval.model_adapter import MockAdapter
         from src.app.eval.llm_eval import check_llm_all
+        from src.app.eval.model_adapter import MockAdapter
 
         adapter = MockAdapter()
         layers = {
@@ -121,9 +118,7 @@ class TestEndToEndWithLlm:
             "security": check_security_all(GOOD_TOOLS),
         }
 
-        llm_layer = asyncio.get_event_loop().run_until_complete(
-            check_llm_all(GOOD_TOOLS, adapter)
-        )
+        llm_layer = asyncio.get_event_loop().run_until_complete(check_llm_all(GOOD_TOOLS, adapter))
         layers["llm"] = llm_layer
 
         report = EvalReport(

@@ -3,19 +3,20 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+from datetime import UTC
 from pathlib import Path
 
 import yaml
 
+from .llm_config import get_eval_adapter, load_llm_config
 from .models import EvalReport, ScoringConfig
-from .protocol import check_protocol_all
-from .quality import check_quality_all, evaluate_tools_compat
-from .security import check_security_all
 from .overlap import detect_overlaps
-from .scoring import apply_scoring
-from .report import render_json, render_text, save_report
+from .protocol import check_protocol_all
+from .quality import check_quality_all
 from .regression import compare_reports, load_report_from_json
-from .llm_config import load_llm_config, get_eval_adapter
+from .report import render_json, render_text, save_report
+from .scoring import apply_scoring
+from .security import check_security_all
 
 
 def _load_tools(path: str) -> list[dict]:
@@ -25,14 +26,15 @@ def _load_tools(path: str) -> list[dict]:
         sys.exit(2)
     data = yaml.safe_load(p.read_text())
     if isinstance(data, list):
-        return data
+        return list(data)
     if isinstance(data, dict):
-        return data.get("tools", [])
+        tools: list[dict] = data.get("tools", [])
+        return tools
     return []
 
 
 def _build_report(tools: list[dict], server_name: str = "", run_llm: bool = False) -> EvalReport:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     layers = {}
     layers["protocol"] = check_protocol_all(tools)
@@ -51,9 +53,8 @@ def _build_report(tools: list[dict], server_name: str = "", run_llm: bool = Fals
                 adapter = get_eval_adapter()
                 if adapter:
                     from .llm_eval import check_llm_all
-                    llm_layer = asyncio.get_event_loop().run_until_complete(
-                        check_llm_all(tools, adapter)
-                    )
+
+                    llm_layer = asyncio.get_event_loop().run_until_complete(check_llm_all(tools, adapter))
                     layers["llm"] = llm_layer
                     llm_meta = {
                         "llm_provider": llm_config["provider"],
@@ -70,7 +71,7 @@ def _build_report(tools: list[dict], server_name: str = "", run_llm: bool = Fals
             print("Warning: --llm flag set but EVAL_LLM_PROVIDER not configured in environment", file=sys.stderr)
 
     report = EvalReport(
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         server_name=server_name,
         layers=layers,
         metadata=llm_meta,
@@ -90,6 +91,7 @@ def cmd_security(args: argparse.Namespace) -> int:
     layer = check_security_all(tools)
 
     from .scoring import compute_layer_score
+
     layer.score = compute_layer_score(layer)
 
     report = EvalReport(
@@ -100,10 +102,7 @@ def cmd_security(args: argparse.Namespace) -> int:
         gate_passed=layer.score >= 70,
     )
     print(render_text(report))
-    has_fail = any(
-        c.status.value == "fail"
-        for tr in layer.tools for c in tr.checks
-    )
+    has_fail = any(c.status.value == "fail" for tr in layer.tools for c in tr.checks)
     return 1 if has_fail else 0
 
 
@@ -113,6 +112,7 @@ def cmd_report(args: argparse.Namespace) -> int:
     config = ScoringConfig()
     if args.config:
         import json
+
         config_data = json.loads(Path(args.config).read_text())
         if "layer_weights" in config_data:
             config.layer_weights = config_data["layer_weights"]
@@ -162,7 +162,11 @@ def main(argv: list[str] | None = None) -> int:
 
     p_validate = sub.add_parser("validate", help="Protocol + quality validation")
     p_validate.add_argument("target", help="Path to tools YAML file")
-    p_validate.add_argument("--llm", action="store_true", help="Run LLM-assisted evaluation (requires EVAL_LLM_PROVIDER in env)")
+    p_validate.add_argument(
+        "--llm",
+        action="store_true",
+        help="Run LLM-assisted evaluation (requires EVAL_LLM_PROVIDER in env)",
+    )
 
     p_security = sub.add_parser("security", help="Security analysis")
     p_security.add_argument("target", help="Path to tools YAML file")
@@ -172,7 +176,11 @@ def main(argv: list[str] | None = None) -> int:
     p_report.add_argument("--format", choices=["json", "text"], default="text")
     p_report.add_argument("--output", help="Output file path")
     p_report.add_argument("--config", help="Scoring config JSON file")
-    p_report.add_argument("--llm", action="store_true", help="Run LLM-assisted evaluation (requires EVAL_LLM_PROVIDER in env)")
+    p_report.add_argument(
+        "--llm",
+        action="store_true",
+        help="Run LLM-assisted evaluation (requires EVAL_LLM_PROVIDER in env)",
+    )
 
     p_compare = sub.add_parser("compare", help="Compare baseline vs current reports")
     p_compare.add_argument("baseline", help="Baseline report JSON")

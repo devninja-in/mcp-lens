@@ -1,7 +1,11 @@
 import json
 
 from src.app.eval.models import (
-    CheckResult, EvalReport, LayerResult, Status, ToolResult,
+    CheckResult,
+    EvalReport,
+    LayerResult,
+    Status,
+    ToolResult,
 )
 from src.app.eval.report import render_json, render_text, save_report
 
@@ -16,10 +20,15 @@ def _make_report() -> EvalReport:
             "protocol": LayerResult(
                 layer="protocol",
                 score=90.0,
-                tools=[ToolResult("search", [
-                    CheckResult("p.name", Status.PASS, "Name is valid"),
-                    CheckResult("p.desc", Status.WARN, "Short description"),
-                ])],
+                tools=[
+                    ToolResult(
+                        "search",
+                        [
+                            CheckResult("p.name", Status.PASS, "Name is valid"),
+                            CheckResult("p.desc", Status.WARN, "Short description"),
+                        ],
+                    )
+                ],
             ),
         },
     )

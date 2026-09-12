@@ -36,21 +36,16 @@ class TestMockTools:
 
 class TestMockCallFn:
     def test_search_customers(self):
-        result, latency = asyncio.get_event_loop().run_until_complete(
-            mock_call_fn("search_customers", {})
-        )
+        result, latency = asyncio.get_event_loop().run_until_complete(mock_call_fn("search_customers", {}))
         assert "content" in result
         assert latency > 0
 
     def test_get_customer(self):
-        result, _ = asyncio.get_event_loop().run_until_complete(
-            mock_call_fn("get_customer", {"customer_id": "c1"})
-        )
+        result, _ = asyncio.get_event_loop().run_until_complete(mock_call_fn("get_customer", {"customer_id": "c1"}))
         assert result["id"] == "c1"
 
     def test_unknown_tool_raises(self):
         import pytest
+
         with pytest.raises(ValueError, match="Unknown tool"):
-            asyncio.get_event_loop().run_until_complete(
-                mock_call_fn("nonexistent", {})
-            )
+            asyncio.get_event_loop().run_until_complete(mock_call_fn("nonexistent", {}))

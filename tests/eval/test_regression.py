@@ -1,5 +1,10 @@
 from src.app.eval.models import (
-    CheckResult, EvalReport, LayerResult, Severity, Status, ToolResult,
+    CheckResult,
+    EvalReport,
+    LayerResult,
+    Severity,
+    Status,
+    ToolResult,
 )
 from src.app.eval.regression import RegressionDiff, compare_reports
 
@@ -48,9 +53,14 @@ class TestCompareReports:
             layers={
                 "protocol": LayerResult(
                     layer="protocol",
-                    tools=[ToolResult("t", [
-                        CheckResult("a", Status.PASS, "ok"),
-                    ])],
+                    tools=[
+                        ToolResult(
+                            "t",
+                            [
+                                CheckResult("a", Status.PASS, "ok"),
+                            ],
+                        )
+                    ],
                 ),
             },
         )
@@ -59,9 +69,14 @@ class TestCompareReports:
             layers={
                 "protocol": LayerResult(
                     layer="protocol",
-                    tools=[ToolResult("t", [
-                        CheckResult("a", Status.FAIL, "broken", Severity.HIGH),
-                    ])],
+                    tools=[
+                        ToolResult(
+                            "t",
+                            [
+                                CheckResult("a", Status.FAIL, "broken", Severity.HIGH),
+                            ],
+                        )
+                    ],
                 ),
             },
         )
@@ -75,9 +90,14 @@ class TestCompareReports:
             layers={
                 "protocol": LayerResult(
                     layer="protocol",
-                    tools=[ToolResult("t", [
-                        CheckResult("a", Status.FAIL, "broken", Severity.HIGH),
-                    ])],
+                    tools=[
+                        ToolResult(
+                            "t",
+                            [
+                                CheckResult("a", Status.FAIL, "broken", Severity.HIGH),
+                            ],
+                        )
+                    ],
                 ),
             },
         )
@@ -86,9 +106,14 @@ class TestCompareReports:
             layers={
                 "protocol": LayerResult(
                     layer="protocol",
-                    tools=[ToolResult("t", [
-                        CheckResult("a", Status.PASS, "fixed"),
-                    ])],
+                    tools=[
+                        ToolResult(
+                            "t",
+                            [
+                                CheckResult("a", Status.PASS, "fixed"),
+                            ],
+                        )
+                    ],
                 ),
             },
         )

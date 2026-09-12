@@ -1,8 +1,6 @@
-import os
-
 import pytest
 
-from src.app.eval.llm_config import load_llm_config, get_eval_adapter
+from src.app.eval.llm_config import get_eval_adapter, load_llm_config
 from src.app.eval.model_adapter import MockAdapter
 
 
@@ -119,12 +117,14 @@ class TestGetDefaultLlmName:
     def test_returns_none_when_file_missing(self, tmp_path, monkeypatch):
         """Test get_default_llm_name returns None when llm.json doesn't exist."""
         from src.app.eval.llm_config import get_default_llm_name
+
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", tmp_path / "nonexistent.json")
         assert get_default_llm_name() is None
 
     def test_returns_none_on_corrupt_json(self, tmp_path, monkeypatch):
         """Test get_default_llm_name exception path with corrupt JSON."""
         from src.app.eval.llm_config import get_default_llm_name
+
         corrupt_file = tmp_path / "llm.json"
         corrupt_file.write_text("{invalid json")
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", corrupt_file)
@@ -133,6 +133,7 @@ class TestGetDefaultLlmName:
     def test_returns_default_name_successfully(self, tmp_path, monkeypatch):
         """Test get_default_llm_name returns default name from file."""
         from src.app.eval.llm_config import get_default_llm_name
+
         llm_file = tmp_path / "llm.json"
         llm_file.write_text('{"default": "my-default-llm"}')
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", llm_file)
@@ -143,6 +144,7 @@ class TestGetAdapterForConfig:
     def test_import_error_for_config(self, tmp_path, monkeypatch):
         """Test get_adapter_for_config ImportError handling."""
         from src.app.eval.llm_config import get_adapter_for_config
+
         llm_file = tmp_path / "llm.json"
         llm_file.write_text('{"configs": {"test": {"provider": "anthropic", "model": "claude-3"}}}')
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", llm_file)
@@ -158,6 +160,7 @@ class TestGetAdapterForConfig:
     def test_env_adapter_success(self, monkeypatch):
         """Test get_adapter_for_config with env config."""
         from src.app.eval.llm_config import get_adapter_for_config
+
         monkeypatch.setenv("EVAL_LLM_PROVIDER", "mock")
         adapter = get_adapter_for_config("env")
         assert isinstance(adapter, MockAdapter)
@@ -165,6 +168,7 @@ class TestGetAdapterForConfig:
     def test_env_adapter_not_configured(self, monkeypatch):
         """Test get_adapter_for_config raises when env not configured."""
         from src.app.eval.llm_config import get_adapter_for_config
+
         monkeypatch.delenv("EVAL_LLM_PROVIDER", raising=False)
         with pytest.raises(ValueError, match="No LLM configured via environment"):
             get_adapter_for_config("env")
@@ -172,6 +176,7 @@ class TestGetAdapterForConfig:
     def test_unknown_config_name(self, tmp_path, monkeypatch):
         """Test get_adapter_for_config with unknown config name."""
         from src.app.eval.llm_config import get_adapter_for_config
+
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", tmp_path / "nonexistent.json")
         with pytest.raises(ValueError, match="Unknown LLM config"):
             get_adapter_for_config("unknown")
@@ -179,6 +184,7 @@ class TestGetAdapterForConfig:
     def test_successful_adapter_creation(self, tmp_path, monkeypatch):
         """Test get_adapter_for_config creates adapter successfully."""
         from src.app.eval.llm_config import get_adapter_for_config
+
         llm_file = tmp_path / "llm.json"
         llm_file.write_text('{"configs": {"test": {"provider": "mock", "model": "test-model"}}}')
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", llm_file)
@@ -191,12 +197,14 @@ class TestLoadMultiLlmConfigs:
     def test_returns_none_when_file_missing(self, tmp_path, monkeypatch):
         """Test load_multi_llm_configs returns None when file doesn't exist."""
         from src.app.eval.llm_config import load_multi_llm_configs
+
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", tmp_path / "nonexistent.json")
         assert load_multi_llm_configs() is None
 
     def test_loads_configs_successfully(self, tmp_path, monkeypatch):
         """Test load_multi_llm_configs loads configs from file."""
         from src.app.eval.llm_config import load_multi_llm_configs
+
         llm_file = tmp_path / "llm.json"
         llm_file.write_text('{"configs": {"test": {"provider": "openai", "model": "gpt-4"}}}')
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", llm_file)
@@ -209,6 +217,7 @@ class TestLoadMultiLlmConfigs:
     def test_resolves_env_vars(self, tmp_path, monkeypatch):
         """Test load_multi_llm_configs resolves environment variables."""
         from src.app.eval.llm_config import load_multi_llm_configs
+
         llm_file = tmp_path / "llm.json"
         llm_file.write_text('{"configs": {"test": {"provider": "openai", "api_key_env": "MY_API_KEY"}}}')
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", llm_file)
@@ -221,6 +230,7 @@ class TestLoadMultiLlmConfigs:
     def test_returns_none_on_error(self, tmp_path, monkeypatch):
         """Test load_multi_llm_configs returns None on error."""
         from src.app.eval.llm_config import load_multi_llm_configs
+
         llm_file = tmp_path / "llm.json"
         llm_file.write_text("{invalid json")
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", llm_file)
@@ -232,6 +242,7 @@ class TestGetAvailableLlmConfigs:
     def test_returns_configs_from_file(self, tmp_path, monkeypatch):
         """Test get_available_llm_configs returns configs from file."""
         from src.app.eval.llm_config import get_available_llm_configs
+
         llm_file = tmp_path / "llm.json"
         llm_file.write_text('{"configs": {"test": {"provider": "openai", "model": "gpt-4", "api_key": "sk-test"}}}')
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", llm_file)
@@ -245,6 +256,7 @@ class TestGetAvailableLlmConfigs:
     def test_includes_env_config(self, tmp_path, monkeypatch):
         """Test get_available_llm_configs includes environment config."""
         from src.app.eval.llm_config import get_available_llm_configs
+
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", tmp_path / "nonexistent.json")
         monkeypatch.setenv("EVAL_LLM_PROVIDER", "openai")
         monkeypatch.setenv("EVAL_LLM_MODEL", "gpt-4")

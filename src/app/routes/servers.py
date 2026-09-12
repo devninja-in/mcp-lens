@@ -15,10 +15,7 @@ router = APIRouter(prefix="/api/servers", tags=["servers"])
 @router.get("")
 async def list_servers() -> dict:
     config = await load_config()
-    return {"servers": {
-        name: server.model_dump(exclude_none=True)
-        for name, server in config.mcpServers.items()
-    }}
+    return {"servers": {name: server.model_dump(exclude_none=True) for name, server in config.mcp_servers.items()}}
 
 
 @router.get("/{name}")
@@ -34,7 +31,7 @@ async def create_server(name: str, server: McpServerConfig) -> ApiResponse:
     try:
         validate_server_name(name)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     existing = await get_server_config(name)
     if existing is not None:
         raise HTTPException(status_code=409, detail=f"Server '{name}' already exists")

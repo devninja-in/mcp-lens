@@ -8,16 +8,69 @@ from .models import CheckResult, LayerResult, Severity, Status, ToolResult
 logger = logging.getLogger(__name__)
 
 ACTIONABLE_VERBS = {
-    "get", "set", "create", "update", "delete", "search", "list",
-    "fetch", "find", "add", "remove", "merge", "approve", "reject",
-    "execute", "run", "query", "send", "read", "write", "upload",
-    "download", "export", "import", "validate", "check", "test",
-    "connect", "disconnect", "start", "stop", "deploy", "publish",
-    "subscribe", "unsubscribe", "configure", "install", "move",
-    "copy", "archive", "restore", "convert", "parse", "generate",
-    "analyze", "compute", "calculate", "resolve", "discover",
-    "put", "patch", "post", "close", "open", "enable", "disable",
-    "reset", "refresh", "sync", "load", "save", "browse", "invite",
+    "get",
+    "set",
+    "create",
+    "update",
+    "delete",
+    "search",
+    "list",
+    "fetch",
+    "find",
+    "add",
+    "remove",
+    "merge",
+    "approve",
+    "reject",
+    "execute",
+    "run",
+    "query",
+    "send",
+    "read",
+    "write",
+    "upload",
+    "download",
+    "export",
+    "import",
+    "validate",
+    "check",
+    "test",
+    "connect",
+    "disconnect",
+    "start",
+    "stop",
+    "deploy",
+    "publish",
+    "subscribe",
+    "unsubscribe",
+    "configure",
+    "install",
+    "move",
+    "copy",
+    "archive",
+    "restore",
+    "convert",
+    "parse",
+    "generate",
+    "analyze",
+    "compute",
+    "calculate",
+    "resolve",
+    "discover",
+    "put",
+    "patch",
+    "post",
+    "close",
+    "open",
+    "enable",
+    "disable",
+    "reset",
+    "refresh",
+    "sync",
+    "load",
+    "save",
+    "browse",
+    "invite",
 }
 
 GENERIC_FILLERS = ["this tool", "a tool that", "tool for", "tool to"]
@@ -55,7 +108,9 @@ def _check_desc_actionable(tool: dict) -> CheckResult:
             details={
                 "location": "description",
                 "current_value": None,
-                "suggestion": "Add a description starting with an action verb like 'Get', 'Create', 'Search', 'Delete', etc.",
+                "suggestion": (
+                    "Add a description starting with an action verb like 'Get', 'Create', 'Search', 'Delete', etc."
+                ),
             },
         )
     first_word = desc.lower().split()[0] if desc.split() else ""
@@ -73,7 +128,9 @@ def _check_desc_actionable(tool: dict) -> CheckResult:
         details={
             "location": "description",
             "current_value": desc[:80] + ("..." if len(desc) > 80 else ""),
-            "suggestion": f"Rephrase to start with an action verb (e.g., 'Get', 'List', 'Create') instead of '{first_word}'.",
+            "suggestion": (
+                f"Rephrase to start with an action verb (e.g., 'Get', 'List', 'Create') instead of '{first_word}'."
+            ),
         },
     )
 
@@ -89,7 +146,9 @@ def _check_desc_adequate_length(tool: dict) -> CheckResult:
             details={
                 "location": "description",
                 "current_value": None,
-                "suggestion": "Add a description of at least 20 characters explaining what the tool does and when to use it.",
+                "suggestion": (
+                    "Add a description of at least 20 characters explaining what the tool does and when to use it."
+                ),
             },
         )
     if len(desc) <= 20:
@@ -101,7 +160,10 @@ def _check_desc_adequate_length(tool: dict) -> CheckResult:
             details={
                 "location": "description",
                 "current_value": desc,
-                "suggestion": "Expand the description to at least 20 characters. Explain what the tool does, its inputs, and expected output.",
+                "suggestion": (
+                    "Expand the description to at least 20 characters. Explain what the tool does, "
+                    "its inputs, and expected output."
+                ),
             },
         )
     return CheckResult(
@@ -130,7 +192,9 @@ def _check_desc_no_filler(tool: dict) -> CheckResult:
                 details={
                     "location": "description",
                     "current_value": desc[:80] + ("..." if len(desc) > 80 else ""),
-                    "suggestion": f"Remove '{filler}' and start directly with an action verb describing the tool's behavior.",
+                    "suggestion": (
+                        f"Remove '{filler}' and start directly with an action verb describing the tool's behavior."
+                    ),
                 },
             )
     return CheckResult(
@@ -156,7 +220,10 @@ def _check_desc_explains_usage(tool: dict) -> CheckResult:
         details={
             "location": "description",
             "current_value": desc,
-            "suggestion": "Add more context: what parameters it expects, what it returns, and when an agent should choose this tool over alternatives.",
+            "suggestion": (
+                "Add more context: what parameters it expects, what it returns, and when "
+                "an agent should choose this tool over alternatives."
+            ),
         },
     )
 
@@ -176,10 +243,7 @@ def _check_param_all_described(tool: dict) -> CheckResult:
             status=Status.PASS,
             message="No parameters to check",
         )
-    missing = [
-        name for name, defn in props.items()
-        if isinstance(defn, dict) and "description" not in defn
-    ]
+    missing = [name for name, defn in props.items() if isinstance(defn, dict) and "description" not in defn]
     if missing:
         return CheckResult(
             check_id="quality.param_all_described",
@@ -189,7 +253,10 @@ def _check_param_all_described(tool: dict) -> CheckResult:
             details={
                 "missing": missing,
                 "location": ", ".join(f"inputSchema.properties.{m}" for m in missing),
-                "suggestion": f"Add a 'description' field to each of: {', '.join(missing)}. Describe what the parameter controls and its expected format.",
+                "suggestion": (
+                    f"Add a 'description' field to each of: {', '.join(missing)}. "
+                    f"Describe what the parameter controls and its expected format."
+                ),
             },
         )
     return CheckResult(
@@ -215,10 +282,9 @@ def _check_param_all_typed(tool: dict) -> CheckResult:
             message="No parameters to check",
         )
     missing = [
-        name for name, defn in props.items()
-        if isinstance(defn, dict) and not any(
-            k in defn for k in ("type", "anyOf", "oneOf")
-        )
+        name
+        for name, defn in props.items()
+        if isinstance(defn, dict) and not any(k in defn for k in ("type", "anyOf", "oneOf"))
     ]
     if missing:
         return CheckResult(
@@ -249,7 +315,8 @@ def _check_param_enum_usage(tool: dict) -> CheckResult:
         )
     props = schema.get("properties", {})
     candidates = [
-        name for name, defn in props.items()
+        name
+        for name, defn in props.items()
         if isinstance(defn, dict)
         and defn.get("type") == "string"
         and "enum" not in defn
@@ -293,7 +360,9 @@ def _check_naming_consistent(tool: dict) -> CheckResult:
         details={
             "location": "name",
             "current_value": name,
-            "suggestion": f"Rename to snake_case (e.g., '{name.lower()}') or camelCase for consistency with other tools.",
+            "suggestion": (
+                f"Rename to snake_case (e.g., '{name.lower()}') or camelCase for consistency with other tools."
+            ),
         },
     )
 
@@ -323,7 +392,10 @@ def _check_naming_verb_prefix(tool: dict) -> CheckResult:
         details={
             "location": "name",
             "current_value": name,
-            "suggestion": f"Prefix the name with an action verb like 'get_', 'list_', 'create_', 'search_' (e.g., 'get_{name}' or 'search_{name}').",
+            "suggestion": (
+                f"Prefix the name with an action verb like 'get_', 'list_', 'create_', 'search_' "
+                f"(e.g., 'get_{name}' or 'search_{name}')."
+            ),
         },
     )
 
@@ -339,7 +411,10 @@ def _check_annotation_hints(tool: dict) -> CheckResult:
             details={
                 "location": "annotations",
                 "current_value": None,
-                "suggestion": 'Add annotations: {"readOnlyHint": true/false, "destructiveHint": true/false} to help agents understand tool safety.',
+                "suggestion": (
+                    'Add annotations: {"readOnlyHint": true/false, "destructiveHint": true/false} '
+                    "to help agents understand tool safety."
+                ),
             },
         )
     has_readonly = "readOnlyHint" in annotations
@@ -419,6 +494,7 @@ def check_quality_all(tools: list[dict]) -> LayerResult:
 # Backward-compatible evaluator (drop-in replacement for src/app/evaluator.py)
 # ---------------------------------------------------------------------------
 
+
 def _score_description(tool: dict) -> dict:
     desc = (tool.get("description") or "").strip()
     checks = {
@@ -453,15 +529,9 @@ def _score_input_schema(tool: dict) -> dict:
 
     if props:
         checks["all_have_types"] = all(
-            "type" in p or "anyOf" in p or "oneOf" in p
-            for p in props.values()
-            if isinstance(p, dict)
+            "type" in p or "anyOf" in p or "oneOf" in p for p in props.values() if isinstance(p, dict)
         )
-        checks["all_have_descriptions"] = all(
-            "description" in p
-            for p in props.values()
-            if isinstance(p, dict)
-        )
+        checks["all_have_descriptions"] = all("description" in p for p in props.values() if isinstance(p, dict))
 
     score = sum(25 for v in checks.values() if v)
     return {"score": score, "checks": checks}
@@ -527,11 +597,8 @@ def _score_annotations(tool: dict) -> dict:
 
 
 def _compute_overall(dimensions: dict[str, dict]) -> float:
-    total = sum(
-        dimensions[dim]["score"] * weight
-        for dim, weight in WEIGHTS.items()
-    )
-    return round(total, 1)
+    total = sum(dimensions[dim]["score"] * weight for dim, weight in WEIGHTS.items())
+    return float(round(total, 1))
 
 
 def _evaluate_single_tool(tool: dict) -> dict:

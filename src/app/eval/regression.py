@@ -4,7 +4,6 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from .models import EvalReport, Status
 
@@ -22,9 +21,7 @@ class RegressionDiff:
     def to_dict(self) -> dict:
         return {
             "score_delta": round(self.score_delta, 1),
-            "per_layer_deltas": {
-                k: round(v, 1) for k, v in self.per_layer_deltas.items()
-            },
+            "per_layer_deltas": {k: round(v, 1) for k, v in self.per_layer_deltas.items()},
             "new_failures": self.new_failures,
             "fixed": self.fixed,
             "regressed": self.regressed,
@@ -76,12 +73,14 @@ def _collect_failures(report: EvalReport) -> list[dict]:
         for tr in layer_result.tools:
             for c in tr.checks:
                 if c.status == Status.FAIL:
-                    failures.append({
-                        "layer": layer_name,
-                        "tool": tr.tool_name,
-                        "check_id": c.check_id,
-                        "message": c.message,
-                    })
+                    failures.append(
+                        {
+                            "layer": layer_name,
+                            "tool": tr.tool_name,
+                            "check_id": c.check_id,
+                            "message": c.message,
+                        }
+                    )
     return failures
 
 

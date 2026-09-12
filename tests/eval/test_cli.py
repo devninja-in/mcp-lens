@@ -10,7 +10,8 @@ from src.app.eval.cli import main
 @pytest.fixture
 def tools_yaml(tmp_path):
     f = tmp_path / "tools.yaml"
-    f.write_text(dedent("""\
+    f.write_text(
+        dedent("""\
         tools:
           - name: search_users
             description: Search for users by name or email address
@@ -25,18 +26,21 @@ def tools_yaml(tmp_path):
             annotations:
               readOnlyHint: true
               destructiveHint: false
-    """))
+    """)
+    )
     return str(f)
 
 
 @pytest.fixture
 def bad_tools_yaml(tmp_path):
     f = tmp_path / "bad_tools.yaml"
-    f.write_text(dedent("""\
+    f.write_text(
+        dedent("""\
         tools:
           - name: ""
             description: ""
-    """))
+    """)
+    )
     return str(f)
 
 
@@ -48,7 +52,7 @@ class TestValidate:
         assert "PASSED" in out
 
     def test_bad_tools_may_fail(self, bad_tools_yaml, capsys):
-        code = main(["validate", bad_tools_yaml])
+        main(["validate", bad_tools_yaml])
         out = capsys.readouterr().out
         assert "MCP Tool Evaluation Report" in out
 
@@ -70,19 +74,19 @@ class TestSecurity:
 
 class TestReport:
     def test_text_format(self, tools_yaml, capsys):
-        code = main(["report", tools_yaml, "--format", "text"])
+        main(["report", tools_yaml, "--format", "text"])
         out = capsys.readouterr().out
         assert "MCP Tool Evaluation Report" in out
 
     def test_json_format(self, tools_yaml, capsys):
-        code = main(["report", tools_yaml, "--format", "json"])
+        main(["report", tools_yaml, "--format", "json"])
         out = capsys.readouterr().out
         data = json.loads(out)
         assert "overall_score" in data
 
     def test_output_to_file(self, tools_yaml, tmp_path):
         out_path = str(tmp_path / "report.json")
-        code = main(["report", tools_yaml, "--format", "json", "--output", out_path])
+        main(["report", tools_yaml, "--format", "json", "--output", out_path])
         assert Path(out_path).exists()
         data = json.loads(Path(out_path).read_text())
         assert "overall_score" in data
@@ -108,16 +112,30 @@ class TestCompare:
     def test_regression(self, tmp_path, capsys):
         baseline = tmp_path / "baseline.json"
         current = tmp_path / "current.json"
-        baseline.write_text(json.dumps({
-            "timestamp": "", "server_name": "test",
-            "overall_score": 90.0, "gate_passed": True,
-            "layers": {}, "metadata": {},
-        }))
-        current.write_text(json.dumps({
-            "timestamp": "", "server_name": "test",
-            "overall_score": 60.0, "gate_passed": False,
-            "layers": {}, "metadata": {},
-        }))
+        baseline.write_text(
+            json.dumps(
+                {
+                    "timestamp": "",
+                    "server_name": "test",
+                    "overall_score": 90.0,
+                    "gate_passed": True,
+                    "layers": {},
+                    "metadata": {},
+                }
+            )
+        )
+        current.write_text(
+            json.dumps(
+                {
+                    "timestamp": "",
+                    "server_name": "test",
+                    "overall_score": 60.0,
+                    "gate_passed": False,
+                    "layers": {},
+                    "metadata": {},
+                }
+            )
+        )
         code = main(["compare", str(baseline), str(current)])
         assert code == 1
         out = capsys.readouterr().out

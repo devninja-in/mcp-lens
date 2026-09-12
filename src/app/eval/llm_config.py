@@ -50,14 +50,11 @@ def get_eval_adapter() -> ModelAdapter | None:
         )
         logger.info("Created LLM adapter: provider=%s model=%s", config["provider"], config["model"] or "default")
         return adapter
-    except ImportError:
+    except ImportError as err:
         provider = config["provider"]
         hint = _INSTALL_HINTS.get(provider, f"Install the package for '{provider}'")
         logger.error("Missing dependency for LLM provider '%s'", provider)
-        raise ImportError(
-            f"Missing dependency for LLM provider '{provider}'. "
-            f"Install it with: {hint}"
-        )
+        raise ImportError(f"Missing dependency for LLM provider '{provider}'. Install it with: {hint}") from err
 
 
 def _resolve_config(cfg: dict) -> dict:
@@ -94,7 +91,8 @@ def get_default_llm_name() -> str | None:
     try:
         with open(LLM_CONFIG_PATH) as f:
             data = json.load(f)
-        return data.get("default")
+        default: str | None = data.get("default")
+        return default
     except Exception:
         return None
 
@@ -143,9 +141,6 @@ def get_adapter_for_config(config_name: str) -> ModelAdapter:
         )
         logger.info("Created adapter for config '%s': provider=%s model=%s", config_name, provider, cfg.get("model"))
         return adapter
-    except ImportError:
+    except ImportError as err:
         logger.error("Missing dependency for LLM config '%s' (provider=%s)", config_name, provider)
-        raise ImportError(
-            f"Missing dependency for LLM provider '{provider}'. "
-            f"Install it with: {hint}"
-        )
+        raise ImportError(f"Missing dependency for LLM provider '{provider}'. Install it with: {hint}") from err

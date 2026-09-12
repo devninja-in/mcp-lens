@@ -1,5 +1,3 @@
-import json
-
 import pytest
 
 from src.app.mcp_client import _parse_sse_response

@@ -88,7 +88,9 @@ def _check_name_valid(tool: dict) -> CheckResult:
             details={
                 "location": "name",
                 "current_value": repr(name),
-                "suggestion": "Provide a non-empty tool name using snake_case or camelCase (e.g., 'get_user', 'searchDocs').",
+                "suggestion": (
+                    "Provide a non-empty tool name using snake_case or camelCase (e.g., 'get_user', 'searchDocs')."
+                ),
             },
         )
     if " " in name:
@@ -121,7 +123,10 @@ def _check_description_present(tool: dict) -> CheckResult:
             details={
                 "location": "description",
                 "current_value": None,
-                "suggestion": "Add a description starting with an action verb, e.g., 'Retrieves user details by ID' or 'Creates a new invoice for a customer'.",
+                "suggestion": (
+                    "Add a description starting with an action verb, e.g., "
+                    "'Retrieves user details by ID' or 'Creates a new invoice for a customer'."
+                ),
             },
         )
     if not isinstance(desc, str):
@@ -161,7 +166,9 @@ def _check_input_schema_structure(tool: dict) -> CheckResult:
             details={
                 "location": "inputSchema",
                 "current_value": repr(schema)[:100],
-                "suggestion": "Replace inputSchema with a JSON Schema object, e.g., {\"type\": \"object\", \"properties\": {...}}.",
+                "suggestion": (
+                    'Replace inputSchema with a JSON Schema object, e.g., {"type": "object", "properties": {...}}.'
+                ),
             },
         )
     schema_type = schema.get("type")
@@ -174,7 +181,9 @@ def _check_input_schema_structure(tool: dict) -> CheckResult:
             details={
                 "location": "inputSchema.type",
                 "current_value": schema_type,
-                "suggestion": "Set inputSchema.type to 'object'. MCP tools expect parameters as an object with named properties.",
+                "suggestion": (
+                    "Set inputSchema.type to 'object'. MCP tools expect parameters as an object with named properties."
+                ),
             },
         )
     return CheckResult(
@@ -192,54 +201,70 @@ def _check_schema_properties(tool: dict) -> list[CheckResult]:
     if props is None:
         return []
     if not isinstance(props, dict):
-        return [CheckResult(
-            check_id="protocol.properties_valid",
-            status=Status.FAIL,
-            message="inputSchema.properties must be an object",
-            severity=Severity.HIGH,
-            details={
-                "location": "inputSchema.properties",
-                "current_value": repr(props)[:100],
-                "suggestion": "Replace properties with an object mapping parameter names to JSON Schema definitions.",
-            },
-        )]
+        return [
+            CheckResult(
+                check_id="protocol.properties_valid",
+                status=Status.FAIL,
+                message="inputSchema.properties must be an object",
+                severity=Severity.HIGH,
+                details={
+                    "location": "inputSchema.properties",
+                    "current_value": repr(props)[:100],
+                    "suggestion": (  # fmt: skip
+                        "Replace properties with an object mapping parameter names to JSON Schema definitions."
+                    ),
+                },
+            )
+        ]
 
     results = []
     for pname, pdef in props.items():
         if not isinstance(pdef, dict):
-            results.append(CheckResult(
-                check_id="protocol.property_is_object",
-                status=Status.FAIL,
-                message=f"Property '{pname}' definition must be an object",
-                severity=Severity.HIGH,
-                details={
-                    "property": pname,
-                    "location": f"inputSchema.properties.{pname}",
-                    "current_value": repr(pdef)[:100],
-                    "suggestion": f"Define '{pname}' as a JSON Schema object, e.g., {{\"type\": \"string\", \"description\": \"...\"}}.",
-                },
-            ))
+            results.append(
+                CheckResult(
+                    check_id="protocol.property_is_object",
+                    status=Status.FAIL,
+                    message=f"Property '{pname}' definition must be an object",
+                    severity=Severity.HIGH,
+                    details={
+                        "property": pname,
+                        "location": f"inputSchema.properties.{pname}",
+                        "current_value": repr(pdef)[:100],
+                        "suggestion": (
+                            f"Define '{pname}' as a JSON Schema object, "
+                            f'e.g., {{"type": "string", "description": "..."}}.'
+                        ),
+                    },
+                )
+            )
             continue
         has_type = "type" in pdef or "anyOf" in pdef or "oneOf" in pdef or "allOf" in pdef or "$ref" in pdef
         if not has_type:
-            results.append(CheckResult(
-                check_id="protocol.property_has_type",
-                status=Status.WARN,
-                message=f"Property '{pname}' has no type definition",
-                severity=Severity.LOW,
-                details={
-                    "property": pname,
-                    "location": f"inputSchema.properties.{pname}",
-                    "suggestion": f"Add a 'type' field (string, number, boolean, array, object) to the '{pname}' property definition.",
-                },
-            ))
+            results.append(
+                CheckResult(
+                    check_id="protocol.property_has_type",
+                    status=Status.WARN,
+                    message=f"Property '{pname}' has no type definition",
+                    severity=Severity.LOW,
+                    details={
+                        "property": pname,
+                        "location": f"inputSchema.properties.{pname}",
+                        "suggestion": (
+                            f"Add a 'type' field (string, number, boolean, array, object) "
+                            f"to the '{pname}' property definition."
+                        ),
+                    },
+                )
+            )
 
     if not results:
-        results.append(CheckResult(
-            check_id="protocol.properties_valid",
-            status=Status.PASS,
-            message="All properties have valid type definitions",
-        ))
+        results.append(
+            CheckResult(
+                check_id="protocol.properties_valid",
+                status=Status.PASS,
+                message="All properties have valid type definitions",
+            )
+        )
     return results
 
 
@@ -267,7 +292,7 @@ def _check_required_valid(tool: dict) -> CheckResult:
             details={
                 "location": "inputSchema.required",
                 "current_value": repr(required)[:100],
-                "suggestion": "Change 'required' to an array of property name strings, e.g., [\"id\", \"name\"].",
+                "suggestion": 'Change \'required\' to an array of property name strings, e.g., ["id", "name"].',
             },
         )
     props = schema.get("properties", {})
@@ -282,7 +307,9 @@ def _check_required_valid(tool: dict) -> CheckResult:
                 "invalid_refs": invalid,
                 "location": "inputSchema.required",
                 "current_value": invalid,
-                "suggestion": f"Either add {invalid} to inputSchema.properties, or remove them from the required array.",
+                "suggestion": (
+                    f"Either add {invalid} to inputSchema.properties, or remove them from the required array."
+                ),
             },
         )
     return CheckResult(
@@ -295,11 +322,13 @@ def _check_required_valid(tool: dict) -> CheckResult:
 def _check_annotation_types(tool: dict) -> list[CheckResult]:
     annotations = tool.get("annotations")
     if not isinstance(annotations, dict):
-        return [CheckResult(
-            check_id="protocol.annotations_present",
-            status=Status.SKIP,
-            message="No annotations defined",
-        )]
+        return [
+            CheckResult(
+                check_id="protocol.annotations_present",
+                status=Status.SKIP,
+                message="No annotations defined",
+            )
+        ]
 
     hint_keys = ["readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"]
     results = []
@@ -307,26 +336,32 @@ def _check_annotation_types(tool: dict) -> list[CheckResult]:
         if key in annotations:
             val = annotations[key]
             if not isinstance(val, bool):
-                results.append(CheckResult(
-                    check_id=f"protocol.annotation_{key}_bool",
-                    status=Status.FAIL,
-                    message=f"Annotation '{key}' must be boolean, got {type(val).__name__} ({val!r})",
-                    severity=Severity.MEDIUM,
-                    details={
-                        "key": key,
-                        "value": val,
-                        "location": f"annotations.{key}",
-                        "current_value": repr(val),
-                        "suggestion": f"Change annotations.{key} to true or false (boolean), not {type(val).__name__}.",
-                    },
-                ))
+                results.append(
+                    CheckResult(
+                        check_id=f"protocol.annotation_{key}_bool",
+                        status=Status.FAIL,
+                        message=f"Annotation '{key}' must be boolean, got {type(val).__name__} ({val!r})",
+                        severity=Severity.MEDIUM,
+                        details={
+                            "key": key,
+                            "value": val,
+                            "location": f"annotations.{key}",
+                            "current_value": repr(val),
+                            "suggestion": (  # fmt: skip
+                                f"Change annotations.{key} to true or false (boolean), not {type(val).__name__}."
+                            ),
+                        },
+                    )
+                )
 
     if not results:
-        results.append(CheckResult(
-            check_id="protocol.annotation_types_valid",
-            status=Status.PASS,
-            message="All annotation hint values are correctly typed",
-        ))
+        results.append(
+            CheckResult(
+                check_id="protocol.annotation_types_valid",
+                status=Status.PASS,
+                message="All annotation hint values are correctly typed",
+            )
+        )
     return results
 
 
@@ -347,7 +382,10 @@ def _check_additional_properties(tool: dict) -> CheckResult:
             details={
                 "location": "inputSchema.additionalProperties",
                 "current_value": "(not set)",
-                "suggestion": "Add \"additionalProperties\": false to inputSchema to prevent unexpected parameters from being passed.",
+                "suggestion": (
+                    'Add "additionalProperties": false to inputSchema to prevent '
+                    "unexpected parameters from being passed."
+                ),
             },
         )
     return CheckResult(

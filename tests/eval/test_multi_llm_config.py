@@ -1,7 +1,6 @@
 """Tests for multi-LLM configuration loading and adapter creation."""
 
 import json
-import os
 
 import pytest
 
@@ -11,7 +10,6 @@ from src.app.eval.llm_config import (
     get_available_llm_configs,
     get_default_llm_name,
     load_multi_llm_configs,
-    LLM_CONFIG_PATH,
 )
 from src.app.eval.model_adapter import MockAdapter
 
@@ -62,13 +60,17 @@ class TestLoadMultiLlmConfigs:
     def test_loads_and_resolves_configs(self, tmp_path, monkeypatch):
         monkeypatch.setenv("TEST_API_KEY", "sk-test")
         config_file = tmp_path / "llm.json"
-        config_file.write_text(json.dumps({
-            "configs": {
-                "gpt4o": {"provider": "openai", "model": "gpt-4o", "api_key_env": "TEST_API_KEY"},
-                "mock_llm": {"provider": "mock", "model": "test"},
-            },
-            "default": "gpt4o",
-        }))
+        config_file.write_text(
+            json.dumps(
+                {
+                    "configs": {
+                        "gpt4o": {"provider": "openai", "model": "gpt-4o", "api_key_env": "TEST_API_KEY"},
+                        "mock_llm": {"provider": "mock", "model": "test"},
+                    },
+                    "default": "gpt4o",
+                }
+            )
+        )
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", config_file)
         result = load_multi_llm_configs()
         assert result is not None
@@ -114,9 +116,13 @@ class TestGetDefaultLlmName:
 class TestGetAvailableLlmConfigs:
     def test_merges_llm_json_and_env(self, tmp_path, monkeypatch):
         config_file = tmp_path / "llm.json"
-        config_file.write_text(json.dumps({
-            "configs": {"mock_llm": {"provider": "mock", "model": "test"}},
-        }))
+        config_file.write_text(
+            json.dumps(
+                {
+                    "configs": {"mock_llm": {"provider": "mock", "model": "test"}},
+                }
+            )
+        )
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", config_file)
         monkeypatch.setenv("EVAL_LLM_PROVIDER", "anthropic")
         monkeypatch.setenv("EVAL_LLM_MODEL", "claude-sonnet-4-20250514")
@@ -134,9 +140,13 @@ class TestGetAvailableLlmConfigs:
     def test_never_exposes_actual_keys(self, tmp_path, monkeypatch):
         monkeypatch.setenv("SECRET_KEY", "sk-very-secret")
         config_file = tmp_path / "llm.json"
-        config_file.write_text(json.dumps({
-            "configs": {"test": {"provider": "openai", "model": "gpt-4o", "api_key_env": "SECRET_KEY"}},
-        }))
+        config_file.write_text(
+            json.dumps(
+                {
+                    "configs": {"test": {"provider": "openai", "model": "gpt-4o", "api_key_env": "SECRET_KEY"}},
+                }
+            )
+        )
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", config_file)
 
         result = get_available_llm_configs()
@@ -178,9 +188,13 @@ class TestGetAdapterForConfig:
 
     def test_named_config_creates_adapter(self, tmp_path, monkeypatch):
         config_file = tmp_path / "llm.json"
-        config_file.write_text(json.dumps({
-            "configs": {"mock_test": {"provider": "mock", "model": "test"}},
-        }))
+        config_file.write_text(
+            json.dumps(
+                {
+                    "configs": {"mock_test": {"provider": "mock", "model": "test"}},
+                }
+            )
+        )
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", config_file)
 
         adapter = get_adapter_for_config("mock_test")
@@ -218,9 +232,13 @@ class TestBackwardCompatibility:
 
     def test_llm_json_does_not_shadow_env_adapter(self, tmp_path, monkeypatch):
         config_file = tmp_path / "llm.json"
-        config_file.write_text(json.dumps({
-            "configs": {"named": {"provider": "mock", "model": "named-model"}},
-        }))
+        config_file.write_text(
+            json.dumps(
+                {
+                    "configs": {"named": {"provider": "mock", "model": "named-model"}},
+                }
+            )
+        )
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", config_file)
         monkeypatch.setenv("EVAL_LLM_PROVIDER", "mock")
         monkeypatch.delenv("EVAL_LLM_MODEL", raising=False)

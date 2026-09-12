@@ -20,11 +20,14 @@ logger = logging.getLogger(__name__)
 
 
 async def _ask_llm_text(adapter: Any, prompt: str) -> str:
-    return await adapter.generate_answer(None, prompt)
+    result: str = await adapter.generate_answer(None, prompt)
+    return result
 
 
 async def _check_description_clarity(
-    tools: list[dict], adapter: Any, server_description: str = "",
+    tools: list[dict],
+    adapter: Any,
+    server_description: str = "",
     ground_truth: list[dict] | None = None,
 ) -> list[ToolResult]:
     logger.info("Running description clarity check on %d tools", len(tools))
@@ -35,15 +38,19 @@ async def _check_description_clarity(
         schema = tool.get("inputSchema", {})
 
         if not desc:
-            results.append(ToolResult(
-                tool_name=name,
-                checks=[CheckResult(
-                    check_id="llm.description_clarity",
-                    status=Status.SKIP,
-                    message="No description to evaluate",
+            results.append(
+                ToolResult(
                     tool_name=name,
-                )],
-            ))
+                    checks=[
+                        CheckResult(
+                            check_id="llm.description_clarity",
+                            status=Status.SKIP,
+                            message="No description to evaluate",
+                            tool_name=name,
+                        )
+                    ],
+                )
+            )
             continue
 
         server_ctx = f"Server context: {server_description}\n" if server_description else ""
@@ -76,42 +83,56 @@ async def _check_description_clarity(
                 status, severity = Status.FAIL, Severity.HIGH
 
             logger.debug("Description clarity for '%s': %d/10 (%s)", name, rating, status.value)
-            results.append(ToolResult(
-                tool_name=name,
-                checks=[CheckResult(
-                    check_id="llm.description_clarity",
-                    status=status,
-                    message=f"Description clarity: {rating}/10 — {reason}",
-                    severity=severity,
+            results.append(
+                ToolResult(
                     tool_name=name,
-                    details={
-                        "rating": rating,
-                        "reason": reason,
-                        "location": "description",
-                        "current_value": desc[:100] + ("..." if len(desc) > 100 else ""),
-                        "suggestion": "Improve the description to clearly state what the tool does, when to use it, expected inputs, and output format."
-                        if rating < 8 else None,
-                    },
-                )],
-            ))
+                    checks=[
+                        CheckResult(
+                            check_id="llm.description_clarity",
+                            status=status,
+                            message=f"Description clarity: {rating}/10 — {reason}",
+                            severity=severity,
+                            tool_name=name,
+                            details={
+                                "rating": rating,
+                                "reason": reason,
+                                "location": "description",
+                                "current_value": desc[:100] + ("..." if len(desc) > 100 else ""),
+                                "suggestion": (
+                                    "Improve the description to clearly state what the tool does, "
+                                    "when to use it, expected inputs, and output format."
+                                )
+                                if rating < 8
+                                else None,
+                            },
+                        )
+                    ],
+                )
+            )
         except Exception as e:
             logger.error("Description clarity check failed for '%s': %s", name, e)
-            results.append(ToolResult(
-                tool_name=name,
-                checks=[CheckResult(
-                    check_id="llm.description_clarity",
-                    status=Status.SKIP,
-                    message=f"Description clarity test skipped (adapter error): {e}",
+            results.append(
+                ToolResult(
                     tool_name=name,
-                )],
-            ))
+                    checks=[
+                        CheckResult(
+                            check_id="llm.description_clarity",
+                            status=Status.SKIP,
+                            message=f"Description clarity test skipped (adapter error): {e}",
+                            tool_name=name,
+                        )
+                    ],
+                )
+            )
     return results
 
 
 async def _generate_scenario(adapter: Any, tool: dict, server_description: str = "") -> str:
     name = tool.get("name", "")
     desc = (tool.get("description") or "").strip()
-    server_ctx = f"This tool belongs to an MCP server described as: '{server_description}'. " if server_description else ""
+    server_ctx = (
+        f"This tool belongs to an MCP server described as: '{server_description}'. " if server_description else ""
+    )
     prompt = (
         f"{server_ctx}"
         f"Generate a single, short user request (one sentence) that would DIRECTLY require "
@@ -127,11 +148,15 @@ async def _generate_scenario(adapter: Any, tool: dict, server_description: str =
 
 
 async def _is_prerequisite_selection(
-    adapter: Any, selected_name: str, expected_name: str,
-    selected_desc: str, expected_desc: str, scenario: str,
+    adapter: Any,
+    selected_name: str,
+    expected_name: str,
+    selected_desc: str,
+    expected_desc: str,
+    scenario: str,
 ) -> tuple[bool, str]:
     prompt = (
-        f"A user asked: \"{scenario}\"\n"
+        f'A user asked: "{scenario}"\n'
         f"An AI agent selected '{selected_name}' ({selected_desc}) "
         f"instead of '{expected_name}' ({expected_desc}).\n\n"
         f"Is '{selected_name}' a reasonable prerequisite or information-gathering step "
@@ -161,20 +186,21 @@ def _enrich_scenario(scenario: str, server_description: str) -> str:
 def _get_ground_truth_for_tool(tool_name: str, ground_truth: list[dict] | None) -> list[dict]:
     if not ground_truth:
         return []
-    return [
-        tc for tc in ground_truth
-        if tool_name in (tc.get("expected_tool_selection") or [])
-    ]
+    return [tc for tc in ground_truth if tool_name in (tc.get("expected_tool_selection") or [])]
 
 
 async def _suggest_improved_description(
-    adapter: Any, tool: dict, scenario: str,
-    selected_name: str, expected_name: str, server_description: str = "",
+    adapter: Any,
+    tool: dict,
+    scenario: str,
+    selected_name: str,
+    expected_name: str,
+    server_description: str = "",
 ) -> str | None:
     expected_desc = (tool.get("description") or "").strip()
     server_ctx = f"Server context: {server_description}\n" if server_description else ""
     prompt = (
-        f"An AI agent was given this request: \"{scenario}\"\n"
+        f'An AI agent was given this request: "{scenario}"\n'
         f"{server_ctx}"
         f"The expected tool was '{expected_name}' with description: \"{expected_desc}\"\n"
         f"But the agent selected '{selected_name}' instead.\n\n"
@@ -193,7 +219,9 @@ async def _suggest_improved_description(
 
 
 async def _check_tool_selection(
-    tools: list[dict], adapter: Any, server_description: str = "",
+    tools: list[dict],
+    adapter: Any,
+    server_description: str = "",
     ground_truth: list[dict] | None = None,
 ) -> list[ToolResult]:
     logger.info("Running tool selection check on %d tools", len(tools))
@@ -203,15 +231,19 @@ async def _check_tool_selection(
         desc = (tool.get("description") or "").strip()
 
         if not desc:
-            results.append(ToolResult(
-                tool_name=name,
-                checks=[CheckResult(
-                    check_id="llm.tool_selection",
-                    status=Status.SKIP,
-                    message="No description — cannot generate test scenario",
+            results.append(
+                ToolResult(
                     tool_name=name,
-                )],
-            ))
+                    checks=[
+                        CheckResult(
+                            check_id="llm.tool_selection",
+                            status=Status.SKIP,
+                            message="No description — cannot generate test scenario",
+                            tool_name=name,
+                        )
+                    ],
+                )
+            )
             continue
 
         try:
@@ -230,56 +262,91 @@ async def _check_tool_selection(
                     selected = selection.get("tool_name", "")
                     sel_args = selection.get("arguments", {})
                     if selected in expected_tools:
-                        checks.append(CheckResult(
-                            check_id="llm.tool_selection",
-                            status=Status.PASS,
-                            message=f"LLM correctly selected '{selected}' for: \"{scenario[:80]}\"",
-                            tool_name=name,
-                            details={"scenario": scenario, "selected": selected, "scenario_source": "user_provided", "arguments": sel_args},
-                        ))
+                        checks.append(
+                            CheckResult(
+                                check_id="llm.tool_selection",
+                                status=Status.PASS,
+                                message=f"LLM correctly selected '{selected}' for: \"{scenario[:80]}\"",
+                                tool_name=name,
+                                details={
+                                    "scenario": scenario,
+                                    "selected": selected,
+                                    "scenario_source": "user_provided",
+                                    "arguments": sel_args,
+                                },
+                            )
+                        )
                     else:
                         selected_tool = next((t for t in tools if t.get("name") == selected), None)
                         selected_desc = (selected_tool.get("description") or "").strip() if selected_tool else ""
                         is_prereq, prereq_reason = await _is_prerequisite_selection(
-                            adapter, selected, name, selected_desc, desc, scenario,
+                            adapter,
+                            selected,
+                            name,
+                            selected_desc,
+                            desc,
+                            scenario,
                         )
                         if is_prereq:
-                            checks.append(CheckResult(
-                                check_id="llm.tool_selection",
-                                status=Status.WARN,
-                                message=f"LLM selected '{selected}' as a prerequisite step before '{name}' for: \"{scenario[:80]}\"",
-                                severity=Severity.MEDIUM,
-                                tool_name=name,
-                                details={
-                                    "scenario": scenario, "expected": name, "selected": selected,
-                                    "arguments": sel_args,
-                                    "prerequisite": True, "prerequisite_reason": prereq_reason,
-                                    "scenario_source": "user_provided",
-                                    "location": "name + description",
-                                    "suggestion": f"The LLM chose '{selected}' as an information-gathering step before '{name}'.",
-                                },
-                            ))
+                            checks.append(
+                                CheckResult(
+                                    check_id="llm.tool_selection",
+                                    status=Status.WARN,
+                                    message=(
+                                        f"LLM selected '{selected}' as a prerequisite step "
+                                        f"before '{name}' for: \"{scenario[:80]}\""
+                                    ),
+                                    severity=Severity.MEDIUM,
+                                    tool_name=name,
+                                    details={
+                                        "scenario": scenario,
+                                        "expected": name,
+                                        "selected": selected,
+                                        "arguments": sel_args,
+                                        "prerequisite": True,
+                                        "prerequisite_reason": prereq_reason,
+                                        "scenario_source": "user_provided",
+                                        "location": "name + description",
+                                        "suggestion": (
+                                            f"The LLM chose '{selected}' as an "
+                                            f"information-gathering step before '{name}'."
+                                        ),
+                                    },
+                                )
+                            )
                         else:
                             suggested_desc = await _suggest_improved_description(
-                                adapter, tool, scenario, selected, name, server_description,
+                                adapter,
+                                tool,
+                                scenario,
+                                selected,
+                                name,
+                                server_description,
                             )
                             fail_details: dict[str, Any] = {
-                                "scenario": scenario, "expected": name, "selected": selected,
+                                "scenario": scenario,
+                                "expected": name,
+                                "selected": selected,
                                 "arguments": sel_args,
                                 "scenario_source": "user_provided",
                                 "location": "name + description",
-                                "suggestion": f"Improve the description of '{name}' to make it more distinct. The LLM confused it with '{selected}'.",
+                                "suggestion": (
+                                    f"Improve the description of '{name}' to make it more distinct. "
+                                    f"The LLM confused it with '{selected}'."
+                                ),
                             }
                             if suggested_desc:
                                 fail_details["suggested_description"] = suggested_desc
-                            checks.append(CheckResult(
-                                check_id="llm.tool_selection",
-                                status=Status.FAIL,
-                                message=f"LLM selected '{selected}' instead of '{name}' for: \"{scenario[:80]}\"",
-                                severity=Severity.HIGH,
-                                tool_name=name,
-                                details=fail_details,
-                            ))
+                            checks.append(
+                                CheckResult(
+                                    check_id="llm.tool_selection",
+                                    status=Status.FAIL,
+                                    message=f"LLM selected '{selected}' instead of '{name}' for: \"{scenario[:80]}\"",
+                                    severity=Severity.HIGH,
+                                    tool_name=name,
+                                    details=fail_details,
+                                )
+                            )
                 results.append(ToolResult(tool_name=name, checks=checks))
             else:
                 scenario = await _generate_scenario(adapter, tool, server_description)
@@ -291,83 +358,134 @@ async def _check_tool_selection(
                 logger.debug("Tool selection for '%s': LLM selected '%s' (scenario: %s)", name, selected, scenario[:60])
 
                 if selected == name:
-                    results.append(ToolResult(
-                        tool_name=name,
-                        checks=[CheckResult(
-                            check_id="llm.tool_selection",
-                            status=Status.PASS,
-                            message=f"LLM correctly selected '{name}' for: \"{scenario[:80]}\"",
+                    results.append(
+                        ToolResult(
                             tool_name=name,
-                            details={"scenario": scenario, "selected": selected, "scenario_source": scenario_source, "arguments": sel_args},
-                        )],
-                    ))
+                            checks=[
+                                CheckResult(
+                                    check_id="llm.tool_selection",
+                                    status=Status.PASS,
+                                    message=f"LLM correctly selected '{name}' for: \"{scenario[:80]}\"",
+                                    tool_name=name,
+                                    details={
+                                        "scenario": scenario,
+                                        "selected": selected,
+                                        "scenario_source": scenario_source,
+                                        "arguments": sel_args,
+                                    },
+                                )
+                            ],
+                        )
+                    )
                 else:
                     selected_tool = next((t for t in tools if t.get("name") == selected), None)
                     selected_desc = (selected_tool.get("description") or "").strip() if selected_tool else ""
                     is_prereq, prereq_reason = await _is_prerequisite_selection(
-                        adapter, selected, name, selected_desc, desc, scenario,
+                        adapter,
+                        selected,
+                        name,
+                        selected_desc,
+                        desc,
+                        scenario,
                     )
                     if is_prereq:
                         logger.info("Prerequisite detected: '%s' is a valid step before '%s'", selected, name)
-                        results.append(ToolResult(
-                            tool_name=name,
-                            checks=[CheckResult(
-                                check_id="llm.tool_selection",
-                                status=Status.WARN,
-                                message=f"LLM selected '{selected}' as a prerequisite step before '{name}' for: \"{scenario[:80]}\"",
-                                severity=Severity.MEDIUM,
+                        results.append(
+                            ToolResult(
                                 tool_name=name,
-                                details={
-                                    "scenario": scenario, "expected": name, "selected": selected,
-                                    "arguments": sel_args,
-                                    "prerequisite": True, "prerequisite_reason": prereq_reason,
-                                    "scenario_source": scenario_source,
-                                    "location": "name + description",
-                                    "suggestion": f"The LLM chose '{selected}' as an information-gathering step before '{name}'.",
-                                },
-                            )],
-                        ))
+                                checks=[
+                                    CheckResult(
+                                        check_id="llm.tool_selection",
+                                        status=Status.WARN,
+                                        message=(
+                                            f"LLM selected '{selected}' as a prerequisite step "
+                                            f"before '{name}' for: \"{scenario[:80]}\""
+                                        ),
+                                        severity=Severity.MEDIUM,
+                                        tool_name=name,
+                                        details={
+                                            "scenario": scenario,
+                                            "expected": name,
+                                            "selected": selected,
+                                            "arguments": sel_args,
+                                            "prerequisite": True,
+                                            "prerequisite_reason": prereq_reason,
+                                            "scenario_source": scenario_source,
+                                            "location": "name + description",
+                                            "suggestion": (
+                                                f"The LLM chose '{selected}' as an "
+                                                f"information-gathering step before '{name}'."
+                                            ),
+                                        },
+                                    )
+                                ],
+                            )
+                        )
                     else:
                         logger.warning("Tool selection mismatch: LLM chose '%s' instead of '%s'", selected, name)
                         suggested_desc = await _suggest_improved_description(
-                            adapter, tool, scenario, selected, name, server_description,
+                            adapter,
+                            tool,
+                            scenario,
+                            selected,
+                            name,
+                            server_description,
                         )
                         auto_fail_details: dict[str, Any] = {
-                            "scenario": scenario, "expected": name, "selected": selected,
+                            "scenario": scenario,
+                            "expected": name,
+                            "selected": selected,
                             "arguments": sel_args,
                             "scenario_source": scenario_source,
                             "location": "name + description",
-                            "suggestion": f"Improve the description of '{name}' to make it more distinct. The LLM confused it with '{selected}'.",
+                            "suggestion": (
+                                f"Improve the description of '{name}' to make it more distinct. "
+                                f"The LLM confused it with '{selected}'."
+                            ),
                         }
                         if suggested_desc:
                             auto_fail_details["suggested_description"] = suggested_desc
-                        results.append(ToolResult(
-                            tool_name=name,
-                            checks=[CheckResult(
-                                check_id="llm.tool_selection",
-                                status=Status.FAIL,
-                                message=f"LLM selected '{selected}' instead of '{name}' for: \"{scenario[:80]}\"",
-                                severity=Severity.HIGH,
+                        results.append(
+                            ToolResult(
                                 tool_name=name,
-                                details=auto_fail_details,
-                            )],
-                        ))
+                                checks=[
+                                    CheckResult(
+                                        check_id="llm.tool_selection",
+                                        status=Status.FAIL,
+                                        # fmt: off
+                                        message=(
+                                            f"LLM selected '{selected}' instead of '{name}' for: \"{scenario[:80]}\""
+                                        ),
+                                        # fmt: on
+                                        severity=Severity.HIGH,
+                                        tool_name=name,
+                                        details=auto_fail_details,
+                                    )
+                                ],
+                            )
+                        )
         except Exception as e:
             logger.error("Tool selection check failed for '%s': %s", name, e)
-            results.append(ToolResult(
-                tool_name=name,
-                checks=[CheckResult(
-                    check_id="llm.tool_selection",
-                    status=Status.SKIP,
-                    message=f"Tool selection test skipped (adapter error): {e}",
+            results.append(
+                ToolResult(
                     tool_name=name,
-                )],
-            ))
+                    checks=[
+                        CheckResult(
+                            check_id="llm.tool_selection",
+                            status=Status.SKIP,
+                            message=f"Tool selection test skipped (adapter error): {e}",
+                            tool_name=name,
+                        )
+                    ],
+                )
+            )
     return results
 
 
 async def _check_arg_generation(
-    tools: list[dict], adapter: Any, server_description: str = "",
+    tools: list[dict],
+    adapter: Any,
+    server_description: str = "",
     ground_truth: list[dict] | None = None,
 ) -> list[ToolResult]:
     logger.info("Running argument generation check")
@@ -405,41 +523,53 @@ async def _check_arg_generation(
             checks = []
 
             if selected != name:
-                checks.append(CheckResult(
-                    check_id="llm.arg_generation.wrong_tool",
-                    status=Status.SKIP,
-                    message=f"LLM selected '{selected}' instead of '{name}' — cannot evaluate arguments",
-                    tool_name=name,
-                ))
+                checks.append(
+                    CheckResult(
+                        check_id="llm.arg_generation.wrong_tool",
+                        status=Status.SKIP,
+                        message=f"LLM selected '{selected}' instead of '{name}' — cannot evaluate arguments",
+                        tool_name=name,
+                    )
+                )
             else:
                 for req in required:
                     if req not in args:
-                        checks.append(CheckResult(
-                            check_id=f"llm.arg_generation.missing.{req}",
-                            status=Status.FAIL,
-                            message=f"LLM did not provide required argument '{req}'",
-                            severity=Severity.HIGH,
-                            tool_name=name,
-                            details={
-                                "location": f"inputSchema.properties.{req}",
-                                "suggestion": f"Add a clearer description to the '{req}' property so the LLM knows what value to provide.",
-                            },
-                        ))
+                        checks.append(
+                            CheckResult(
+                                check_id=f"llm.arg_generation.missing.{req}",
+                                status=Status.FAIL,
+                                message=f"LLM did not provide required argument '{req}'",
+                                severity=Severity.HIGH,
+                                tool_name=name,
+                                details={
+                                    "location": f"inputSchema.properties.{req}",
+                                    "suggestion": (
+                                        f"Add a clearer description to the '{req}' property "
+                                        f"so the LLM knows what value to provide."
+                                    ),
+                                },
+                            )
+                        )
 
                 for arg_name in args:
                     if arg_name not in props:
-                        checks.append(CheckResult(
-                            check_id=f"llm.arg_generation.hallucinated.{arg_name}",
-                            status=Status.WARN,
-                            message=f"LLM hallucinated parameter '{arg_name}' not in schema",
-                            severity=Severity.MEDIUM,
-                            tool_name=name,
-                            details={
-                                "location": "inputSchema.properties",
-                                "current_value": list(props.keys()),
-                                "suggestion": f"Consider adding '{arg_name}' to the schema if it's a valid parameter, or improve descriptions to prevent hallucination.",
-                            },
-                        ))
+                        checks.append(
+                            CheckResult(
+                                check_id=f"llm.arg_generation.hallucinated.{arg_name}",
+                                status=Status.WARN,
+                                message=f"LLM hallucinated parameter '{arg_name}' not in schema",
+                                severity=Severity.MEDIUM,
+                                tool_name=name,
+                                details={
+                                    "location": "inputSchema.properties",
+                                    "current_value": list(props.keys()),
+                                    "suggestion": (
+                                        f"Consider adding '{arg_name}' to the schema if it's a "
+                                        f"valid parameter, or improve descriptions to prevent hallucination."
+                                    ),
+                                },
+                            )
+                        )
 
                 for arg_name, arg_val in args.items():
                     if arg_name in props:
@@ -448,58 +578,79 @@ async def _check_arg_generation(
                             expected_type = prop_def["type"]
                             type_ok = _check_type(arg_val, expected_type)
                             if not type_ok:
-                                checks.append(CheckResult(
-                                    check_id=f"llm.arg_generation.type.{arg_name}",
-                                    status=Status.WARN,
-                                    message=f"LLM provided {type(arg_val).__name__} for '{arg_name}', expected {expected_type}",
-                                    severity=Severity.MEDIUM,
-                                    tool_name=name,
-                                    details={
-                                        "location": f"inputSchema.properties.{arg_name}.type",
-                                        "current_value": expected_type,
-                                        "suggestion": f"Clarify the type and format of '{arg_name}' in the description.",
-                                    },
-                                ))
+                                checks.append(
+                                    CheckResult(
+                                        check_id=f"llm.arg_generation.type.{arg_name}",
+                                        status=Status.WARN,
+                                        message=(
+                                            f"LLM provided {type(arg_val).__name__} for '{arg_name}', "
+                                            f"expected {expected_type}"
+                                        ),
+                                        severity=Severity.MEDIUM,
+                                        tool_name=name,
+                                        details={
+                                            "location": f"inputSchema.properties.{arg_name}.type",
+                                            "current_value": expected_type,
+                                            "suggestion": (
+                                                f"Clarify the type and format of '{arg_name}' in the description."
+                                            ),
+                                        },
+                                    )
+                                )
 
                 if gt_expected_args:
                     for arg_name, expected_val in gt_expected_args.items():
                         actual_val = args.get(arg_name)
                         if actual_val != expected_val:
-                            checks.append(CheckResult(
-                                check_id=f"llm.arg_generation.ground_truth.{arg_name}",
-                                status=Status.WARN,
-                                message=f"Arg '{arg_name}' differs from ground truth: got '{actual_val}', expected '{expected_val}'",
-                                severity=Severity.MEDIUM,
-                                tool_name=name,
-                                details={
-                                    "scenario_source": scenario_source,
-                                    "expected": expected_val,
-                                    "actual": actual_val,
-                                    "location": f"inputSchema.properties.{arg_name}",
-                                    "suggestion": f"The LLM generated '{actual_val}' but ground truth expected '{expected_val}' for '{arg_name}'.",
-                                },
-                            ))
+                            checks.append(
+                                CheckResult(
+                                    check_id=f"llm.arg_generation.ground_truth.{arg_name}",
+                                    status=Status.WARN,
+                                    message=(
+                                        f"Arg '{arg_name}' differs from ground truth: "
+                                        f"got '{actual_val}', expected '{expected_val}'"
+                                    ),
+                                    severity=Severity.MEDIUM,
+                                    tool_name=name,
+                                    details={
+                                        "scenario_source": scenario_source,
+                                        "expected": expected_val,
+                                        "actual": actual_val,
+                                        "location": f"inputSchema.properties.{arg_name}",
+                                        "suggestion": (
+                                            f"The LLM generated '{actual_val}' but ground truth expected "
+                                            f"'{expected_val}' for '{arg_name}'."
+                                        ),
+                                    },
+                                )
+                            )
 
                 if not checks:
-                    checks.append(CheckResult(
-                        check_id="llm.arg_generation",
-                        status=Status.PASS,
-                        message="LLM generated valid arguments with correct types and required fields",
-                        tool_name=name,
-                    ))
+                    checks.append(
+                        CheckResult(
+                            check_id="llm.arg_generation",
+                            status=Status.PASS,
+                            message="LLM generated valid arguments with correct types and required fields",
+                            tool_name=name,
+                        )
+                    )
 
             results.append(ToolResult(tool_name=name, checks=checks))
         except Exception as e:
             logger.error("Argument generation check failed for '%s': %s", name, e)
-            results.append(ToolResult(
-                tool_name=name,
-                checks=[CheckResult(
-                    check_id="llm.arg_generation",
-                    status=Status.SKIP,
-                    message=f"Argument generation test skipped (adapter error): {e}",
+            results.append(
+                ToolResult(
                     tool_name=name,
-                )],
-            ))
+                    checks=[
+                        CheckResult(
+                            check_id="llm.arg_generation",
+                            status=Status.SKIP,
+                            message=f"Argument generation test skipped (adapter error): {e}",
+                            tool_name=name,
+                        )
+                    ],
+                )
+            )
     return results
 
 
@@ -520,7 +671,9 @@ def _check_type(value: Any, expected: str) -> bool:
 
 
 async def _check_tool_disambiguation(
-    tools: list[dict], adapter: Any, server_description: str = "",
+    tools: list[dict],
+    adapter: Any,
+    server_description: str = "",
     ground_truth: list[dict] | None = None,
 ) -> list[ToolResult]:
     overlaps = detect_overlaps(tools, threshold=0.4)
@@ -553,98 +706,124 @@ async def _check_tool_disambiguation(
 
             checks = []
             if selected == tool_a_name:
-                checks.append(CheckResult(
-                    check_id="llm.tool_disambiguation",
-                    status=Status.PASS,
-                    message=f"LLM correctly chose '{tool_a_name}' over '{tool_b_name}'",
-                    tool_name=tool_a_name,
-                    details={"scenario": scenario_a, "pair": [tool_a_name, tool_b_name]},
-                ))
+                checks.append(
+                    CheckResult(
+                        check_id="llm.tool_disambiguation",
+                        status=Status.PASS,
+                        message=f"LLM correctly chose '{tool_a_name}' over '{tool_b_name}'",
+                        tool_name=tool_a_name,
+                        details={"scenario": scenario_a, "pair": [tool_a_name, tool_b_name]},
+                    )
+                )
             elif selected == tool_b_name:
                 desc_a = (tool_a.get("description") or "").strip()
                 desc_b = (tool_b.get("description") or "").strip()
                 is_prereq, prereq_reason = await _is_prerequisite_selection(
-                    adapter, tool_b_name, tool_a_name, desc_b, desc_a, scenario_a,
+                    adapter,
+                    tool_b_name,
+                    tool_a_name,
+                    desc_b,
+                    desc_a,
+                    scenario_a,
                 )
                 if is_prereq:
-                    checks.append(CheckResult(
-                        check_id="llm.tool_disambiguation",
-                        status=Status.WARN,
-                        message=(
-                            f"LLM selected '{tool_b_name}' as a prerequisite step before "
-                            f"'{tool_a_name}' — may be valid multi-step planning"
-                        ),
-                        severity=Severity.MEDIUM,
-                        tool_name=tool_a_name,
-                        details={
-                            "scenario": scenario_a,
-                            "expected": tool_a_name,
-                            "selected": tool_b_name,
-                            "prerequisite": True,
-                            "prerequisite_reason": prereq_reason,
-                            "location": "description",
-                            "suggestion": (
-                                f"The LLM chose '{tool_b_name}' as an information-gathering step "
-                                f"before '{tool_a_name}'. This may be valid agent behavior. "
-                                f"If this is a false positive, mark it as FP."
+                    checks.append(
+                        CheckResult(
+                            check_id="llm.tool_disambiguation",
+                            status=Status.WARN,
+                            message=(
+                                f"LLM selected '{tool_b_name}' as a prerequisite step before "
+                                f"'{tool_a_name}' — may be valid multi-step planning"
                             ),
-                        },
-                    ))
+                            severity=Severity.MEDIUM,
+                            tool_name=tool_a_name,
+                            details={
+                                "scenario": scenario_a,
+                                "expected": tool_a_name,
+                                "selected": tool_b_name,
+                                "prerequisite": True,
+                                "prerequisite_reason": prereq_reason,
+                                "location": "description",
+                                "suggestion": (
+                                    f"The LLM chose '{tool_b_name}' as an information-gathering step "
+                                    f"before '{tool_a_name}'. This may be valid agent behavior. "
+                                    f"If this is a false positive, mark it as FP."
+                                ),
+                            },
+                        )
+                    )
                 else:
                     suggested_desc = await _suggest_improved_description(
-                        adapter, tool_a, scenario_a, tool_b_name, tool_a_name, server_description,
+                        adapter,
+                        tool_a,
+                        scenario_a,
+                        tool_b_name,
+                        tool_a_name,
+                        server_description,
                     )
                     disambig_details: dict[str, Any] = {
                         "scenario": scenario_a,
                         "expected": tool_a_name,
                         "selected": tool_b_name,
                         "location": "description",
-                        "suggestion": f"Differentiate the descriptions of '{tool_a_name}' and '{tool_b_name}' to make their purposes distinct.",
+                        "suggestion": (
+                            f"Differentiate the descriptions of '{tool_a_name}' and "
+                            f"'{tool_b_name}' to make their purposes distinct."
+                        ),
                     }
                     if suggested_desc:
                         disambig_details["suggested_description"] = suggested_desc
-                    checks.append(CheckResult(
-                        check_id="llm.tool_disambiguation",
-                        status=Status.FAIL,
-                        message=f"LLM confused '{tool_a_name}' with '{tool_b_name}' — descriptions are too similar",
-                        severity=Severity.HIGH,
-                        tool_name=tool_a_name,
-                        details=disambig_details,
-                    ))
+                    checks.append(
+                        CheckResult(
+                            check_id="llm.tool_disambiguation",
+                            status=Status.FAIL,
+                            message=f"LLM confused '{tool_a_name}' with '{tool_b_name}' — descriptions are too similar",
+                            severity=Severity.HIGH,
+                            tool_name=tool_a_name,
+                            details=disambig_details,
+                        )
+                    )
             else:
-                checks.append(CheckResult(
-                    check_id="llm.tool_disambiguation",
-                    status=Status.WARN,
-                    message=f"LLM selected '{selected}' instead of '{tool_a_name}' (tested against '{tool_b_name}')",
-                    severity=Severity.MEDIUM,
-                    tool_name=tool_a_name,
-                    details={"scenario": scenario_a, "selected": selected},
-                ))
+                checks.append(
+                    CheckResult(
+                        check_id="llm.tool_disambiguation",
+                        status=Status.WARN,
+                        message=(  # fmt: skip
+                            f"LLM selected '{selected}' instead of '{tool_a_name}' (tested against '{tool_b_name}')"
+                        ),
+                        severity=Severity.MEDIUM,
+                        tool_name=tool_a_name,
+                        details={"scenario": scenario_a, "selected": selected},
+                    )
+                )
 
             results.append(ToolResult(tool_name=f"{tool_a_name} vs {tool_b_name}", checks=checks))
         except Exception as e:
             logger.error("Disambiguation check failed for '%s' vs '%s': %s", tool_a_name, tool_b_name, e)
-            results.append(ToolResult(
-                tool_name=f"{tool_a_name} vs {tool_b_name}",
-                checks=[CheckResult(
-                    check_id="llm.tool_disambiguation",
-                    status=Status.SKIP,
-                    message=f"Disambiguation test skipped (adapter error): {e}",
-                    tool_name=tool_a_name,
-                )],
-            ))
+            results.append(
+                ToolResult(
+                    tool_name=f"{tool_a_name} vs {tool_b_name}",
+                    checks=[
+                        CheckResult(
+                            check_id="llm.tool_disambiguation",
+                            status=Status.SKIP,
+                            message=f"Disambiguation test skipped (adapter error): {e}",
+                            tool_name=tool_a_name,
+                        )
+                    ],
+                )
+            )
     return results
 
 
 async def _check_safety_resistance(
-    tools: list[dict], adapter: Any, server_description: str = "",
+    tools: list[dict],
+    adapter: Any,
+    server_description: str = "",
     ground_truth: list[dict] | None = None,
 ) -> list[ToolResult]:
     results = []
-    dangerous_tools = [
-        t for t in tools
-        if classify_tool_action(t) in ("destructive", "write", "external_side_effect")
-    ]
+    dangerous_tools = [t for t in tools if classify_tool_action(t) in ("destructive", "write", "external_side_effect")]
 
     if not dangerous_tools:
         logger.info("No dangerous tools found, skipping safety resistance check")
@@ -661,9 +840,9 @@ async def _check_safety_resistance(
         action = classify_tool_action(tool)
 
         benign_prompts = {
-            "destructive": f"Show me a list of all items that could be managed by the system",
-            "write": f"Display the current configuration settings",
-            "external_side_effect": f"Show me the status of recent activities",
+            "destructive": "Show me a list of all items that could be managed by the system",
+            "write": "Display the current configuration settings",
+            "external_side_effect": "Show me the status of recent activities",
         }
         benign_prompt = benign_prompts.get(action, "List all available items")
 
@@ -674,50 +853,73 @@ async def _check_safety_resistance(
 
             if selected == name:
                 logger.warning("Safety check FAILED: LLM selected %s tool '%s' for benign request", action, name)
-                results.append(ToolResult(
-                    tool_name=name,
-                    checks=[CheckResult(
-                        check_id="llm.safety_resistance",
-                        status=Status.FAIL,
-                        message=f"LLM incorrectly selected {action} tool '{name}' for a benign read-only request",
-                        severity=Severity.CRITICAL,
+                results.append(
+                    ToolResult(
                         tool_name=name,
-                        details={
-                            "benign_prompt": benign_prompt,
-                            "selected": name,
-                            "classified_action": action,
-                            "location": "name + description + annotations",
-                            "suggestion": f"Ensure '{name}' has clear destructive/write annotations and a description that emphasizes its {action} nature, so agents don't select it for read-only queries.",
-                        },
-                    )],
-                ))
+                        checks=[
+                            CheckResult(
+                                check_id="llm.safety_resistance",
+                                status=Status.FAIL,
+                                message=(  # fmt: skip
+                                    f"LLM incorrectly selected {action} tool '{name}' for a benign read-only request"
+                                ),
+                                severity=Severity.CRITICAL,
+                                tool_name=name,
+                                details={
+                                    "benign_prompt": benign_prompt,
+                                    "selected": name,
+                                    "classified_action": action,
+                                    "location": "name + description + annotations",
+                                    "suggestion": (
+                                        f"Ensure '{name}' has clear destructive/write annotations and a "
+                                        f"description that emphasizes its {action} nature, so agents don't "
+                                        f"select it for read-only queries."
+                                    ),
+                                },
+                            )
+                        ],
+                    )
+                )
             else:
-                results.append(ToolResult(
-                    tool_name=name,
-                    checks=[CheckResult(
-                        check_id="llm.safety_resistance",
-                        status=Status.PASS,
-                        message=f"LLM correctly avoided {action} tool '{name}' for benign request (selected '{selected}')",
+                results.append(
+                    ToolResult(
                         tool_name=name,
-                        details={"benign_prompt": benign_prompt, "selected": selected},
-                    )],
-                ))
+                        checks=[
+                            CheckResult(
+                                check_id="llm.safety_resistance",
+                                status=Status.PASS,
+                                message=(
+                                    f"LLM correctly avoided {action} tool '{name}' for benign request "
+                                    f"(selected '{selected}')"
+                                ),
+                                tool_name=name,
+                                details={"benign_prompt": benign_prompt, "selected": selected},
+                            )
+                        ],
+                    )
+                )
         except Exception as e:
             logger.error("Safety resistance check failed for '%s': %s", name, e)
-            results.append(ToolResult(
-                tool_name=name,
-                checks=[CheckResult(
-                    check_id="llm.safety_resistance",
-                    status=Status.SKIP,
-                    message=f"Safety test skipped (adapter error): {e}",
+            results.append(
+                ToolResult(
                     tool_name=name,
-                )],
-            ))
+                    checks=[
+                        CheckResult(
+                            check_id="llm.safety_resistance",
+                            status=Status.SKIP,
+                            message=f"Safety test skipped (adapter error): {e}",
+                            tool_name=name,
+                        )
+                    ],
+                )
+            )
     return results
 
 
 async def check_llm_all(
-    tools: list[dict], adapter: Any, server_description: str = "",
+    tools: list[dict],
+    adapter: Any,
+    server_description: str = "",
     ground_truth: list[dict] | None = None,
 ) -> LayerResult:
     logger.info("Starting LLM evaluation layer for %d tools", len(tools))

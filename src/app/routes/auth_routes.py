@@ -5,7 +5,15 @@ import webbrowser
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 
-from ..auth import discover_oauth_metadata, get_auth_status, handle_oauth_callback, set_api_key, set_bearer_token, start_oauth_flow, validate_url
+from ..auth import (
+    discover_oauth_metadata,
+    get_auth_status,
+    handle_oauth_callback,
+    set_api_key,
+    set_bearer_token,
+    start_oauth_flow,
+    validate_url,
+)
 from ..config import get_frontend_port, load_config
 
 logger = logging.getLogger(__name__)
@@ -17,17 +25,17 @@ oauth_callback_router = APIRouter(tags=["oauth"])
 @router.get("/status/{name}")
 async def auth_status(name: str) -> dict:
     config = await load_config()
-    if name not in config.mcpServers:
+    if name not in config.mcp_servers:
         raise HTTPException(status_code=404, detail=f"Server '{name}' not found")
-    return await get_auth_status(name, config.mcpServers[name])
+    return await get_auth_status(name, config.mcp_servers[name])
 
 
 @router.post("/bearer-token/{name}")
 async def save_bearer_token(name: str, body: dict) -> dict:
     config = await load_config()
-    if name not in config.mcpServers:
+    if name not in config.mcp_servers:
         raise HTTPException(status_code=404, detail=f"Server '{name}' not found")
-    server = config.mcpServers[name]
+    server = config.mcp_servers[name]
     if server.auth_mode not in ("bearer_token", None):
         raise HTTPException(status_code=400, detail="Server does not use Bearer Token auth")
     token = body.get("token", "").strip()
@@ -40,9 +48,9 @@ async def save_bearer_token(name: str, body: dict) -> dict:
 @router.post("/api-key/{name}")
 async def save_api_key_endpoint(name: str, body: dict) -> dict:
     config = await load_config()
-    if name not in config.mcpServers:
+    if name not in config.mcp_servers:
         raise HTTPException(status_code=404, detail=f"Server '{name}' not found")
-    server = config.mcpServers[name]
+    server = config.mcp_servers[name]
     if server.auth_mode != "api_key":
         raise HTTPException(status_code=400, detail="Server does not use API Key auth")
     key = body.get("key", "").strip()
@@ -60,30 +68,30 @@ async def discover_endpoints(body: dict) -> dict:
     try:
         validate_url(url)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     ssl_verify = body.get("ssl_verify", True)
     try:
         return await discover_oauth_metadata(url, ssl_verify)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:
         logger.exception("OAuth discovery failed")
-        raise HTTPException(status_code=502, detail="Discovery failed. Check server logs.")
+        raise HTTPException(status_code=502, detail="Discovery failed. Check server logs.") from e
 
 
 @router.post("/start/{name}")
 async def start_auth(name: str) -> dict:
     config = await load_config()
-    if name not in config.mcpServers:
+    if name not in config.mcp_servers:
         raise HTTPException(status_code=404, detail=f"Server '{name}' not found")
-    server = config.mcpServers[name]
+    server = config.mcp_servers[name]
     if server.auth_mode not in ("oauth", "dcr"):
         raise HTTPException(status_code=400, detail="Server does not use OAuth/DCR auth")
     try:
         auth_url = await start_oauth_flow(name, server)
-    except Exception:
+    except Exception as e:
         logger.exception("Auth flow failed for server %s", name)
-        raise HTTPException(status_code=502, detail="Auth flow failed. Check server logs for details.")
+        raise HTTPException(status_code=502, detail="Auth flow failed. Check server logs for details.") from e
     webbrowser.open(auth_url)
     return {"auth_url": auth_url, "message": "Browser opened for authorization"}
 
@@ -114,7 +122,7 @@ async def oauth_callback(
     try:
         server_name = await handle_oauth_callback(state, code)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception:
         logger.exception("OAuth token exchange failed")
         return HTMLResponse(
