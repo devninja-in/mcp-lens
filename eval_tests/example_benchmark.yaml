@@ -1,0 +1,23 @@
+benchmark:
+  name: customer-support
+  server_name: example-server
+  version: "1.0"
+
+tasks:
+  - id: find_customer
+    prompt: "Find the customer Alice Smith"
+    expected_tools:
+      - search_customers
+    expected_args:
+      search_customers:
+        name: "Alice Smith"
+
+  - id: get_invoice
+    prompt: "Get invoice number INV-001"
+    expected_tools:
+      - get_invoice
+    expected_args:
+      get_invoice:
+        invoice_id: "INV-001"
+    tags:
+      - read-only

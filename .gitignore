@@ -1,9 +1,65 @@
+# Environment & secrets
 .env
+.env.*
+!.env.example
 tokens.json
+google-service-account.json
+*-service-account.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+
+# Credentials & auth
+mcp.json
+llm.json
+secrets/
+credentials/
+*.credential
+*.keystore
+
+# Python
 __pycache__/
 *.pyc
-node_modules/
-static/
-dist/
+*.pyo
+*.egg-info/
 .venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Node / Frontend
+node_modules/
+dist/
+.vite/
+
+# Build output
+static/
+
+# Runtime data
 tools/
+eval_reports/
+*.db
+*.sqlite
+*.sqlite3
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Superpowers workspace
+.superpowers/
+
+# Internal planning artifacts
+docs/superpowers/

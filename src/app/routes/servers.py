@@ -1,14 +1,20 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 
-from ..config import load_config, save_config
+from ..auth import validate_server_name
+from ..config import load_config
+from ..database import delete_server_config, get_server_config, set_server_config
 from ..models import ApiResponse, McpServerConfig
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/servers", tags=["servers"])
 
 
 @router.get("")
 async def list_servers() -> dict:
-    config = load_config()
+    config = await load_config()
     return {"servers": {
         name: server.model_dump(exclude_none=True)
         for name, server in config.mcpServers.items()
@@ -17,37 +23,41 @@ async def list_servers() -> dict:
 
 @router.get("/{name}")
 async def get_server(name: str) -> dict:
-    config = load_config()
-    if name not in config.mcpServers:
+    data = await get_server_config(name)
+    if data is None:
         raise HTTPException(status_code=404, detail=f"Server '{name}' not found")
-    return {"name": name, "config": config.mcpServers[name].model_dump(exclude_none=True)}
+    return {"name": name, "config": McpServerConfig.model_validate(data).model_dump(exclude_none=True)}
 
 
 @router.post("")
 async def create_server(name: str, server: McpServerConfig) -> ApiResponse:
-    config = load_config()
-    if name in config.mcpServers:
+    try:
+        validate_server_name(name)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    existing = await get_server_config(name)
+    if existing is not None:
         raise HTTPException(status_code=409, detail=f"Server '{name}' already exists")
-    config.mcpServers[name] = server
-    save_config(config)
+    await set_server_config(name, server.model_dump(exclude_none=True))
+    logger.info("Created server '%s' (url=%s)", name, server.url)
     return ApiResponse(success=True, message=f"Server '{name}' created")
 
 
 @router.put("/{name}")
 async def update_server(name: str, server: McpServerConfig) -> ApiResponse:
-    config = load_config()
-    if name not in config.mcpServers:
+    existing = await get_server_config(name)
+    if existing is None:
         raise HTTPException(status_code=404, detail=f"Server '{name}' not found")
-    config.mcpServers[name] = server
-    save_config(config)
+    await set_server_config(name, server.model_dump(exclude_none=True))
+    logger.info("Updated server '%s'", name)
     return ApiResponse(success=True, message=f"Server '{name}' updated")
 
 
 @router.delete("/{name}")
 async def delete_server(name: str) -> ApiResponse:
-    config = load_config()
-    if name not in config.mcpServers:
+    existing = await get_server_config(name)
+    if existing is None:
         raise HTTPException(status_code=404, detail=f"Server '{name}' not found")
-    del config.mcpServers[name]
-    save_config(config)
+    await delete_server_config(name)
+    logger.info("Deleted server '%s'", name)
     return ApiResponse(success=True, message=f"Server '{name}' deleted")

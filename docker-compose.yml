@@ -1,0 +1,20 @@
+services:
+  mcp-lens:
+    build: .
+    ports:
+      - "${BACKEND_PORT:-5002}:5002"
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-sqlite+aiosqlite:///mcp_secrets.db}
+      - EVAL_LLM_PROVIDER=${EVAL_LLM_PROVIDER:-}
+      - EVAL_LLM_MODEL=${EVAL_LLM_MODEL:-}
+      - EVAL_LLM_API_KEY=${EVAL_LLM_API_KEY:-}
+      - EVAL_LLM_PROJECT=${EVAL_LLM_PROJECT:-}
+      - EVAL_LLM_LOCATION=${EVAL_LLM_LOCATION:-}
+      - EVAL_LLM_BASE_URL=${EVAL_LLM_BASE_URL:-}
+      - PERSIST_OAUTH_TOKENS=${PERSIST_OAUTH_TOKENS:-false}
+    volumes:
+      - mcp-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  mcp-data:

@@ -1,0 +1,36 @@
+{
+  "_comment": "Multi-LLM configuration for MCP Lens evaluation. Keys ending in '_env' reference environment variable names (set in .env), not raw values.",
+
+  "default": "gemini-flash",
+
+  "configs": {
+    "gemini-flash": {
+      "provider": "vertexai",
+      "model": "gemini-2.5-flash",
+      "project_env": "EVAL_LLM_PROJECT",
+      "location_env": "EVAL_LLM_LOCATION"
+    },
+    "gemini-pro": {
+      "provider": "vertexai",
+      "model": "gemini-2.5-pro",
+      "project_env": "EVAL_LLM_PROJECT",
+      "location_env": "EVAL_LLM_LOCATION"
+    },
+    "claude": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-20250514",
+      "api_key_env": "ANTHROPIC_API_KEY"
+    },
+    "gpt4": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "api_key_env": "OPENAI_API_KEY"
+    },
+    "claude-vertex": {
+      "provider": "anthropic-vertex",
+      "model": "claude-sonnet-4-20250514",
+      "project_env": "EVAL_LLM_PROJECT",
+      "location_env": "EVAL_LLM_LOCATION"
+    }
+  }
+}

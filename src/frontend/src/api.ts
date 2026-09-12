@@ -1,4 +1,4 @@
-import type { McpServerConfig, AuthStatus, ToolInfo } from './types'
+import type { McpServerConfig, AuthStatus, ToolInfo, EvaluationResult, FullEvalReport, FullLayerResult } from './types'
 
 const BASE = '/api'
 
@@ -49,7 +49,7 @@ export async function fetchTools(name: string): Promise<{ success: boolean; mess
   return fetchJson(`/servers/${encodeURIComponent(name)}/fetch-tools`, { method: 'POST' })
 }
 
-export async function getTools(name: string): Promise<{ server: string; tools: ToolInfo[]; count: number }> {
+export async function getTools(name: string): Promise<{ server: string; tools: ToolInfo[]; count: number; source?: string }> {
   return fetchJson(`/servers/${encodeURIComponent(name)}/tools`)
 }
 
@@ -59,4 +59,160 @@ export async function getAuthStatus(name: string): Promise<AuthStatus> {
 
 export async function startAuth(name: string): Promise<{ auth_url: string; message: string }> {
   return fetchJson(`/auth/start/${encodeURIComponent(name)}`, { method: 'POST' })
+}
+
+export async function saveBearerToken(name: string, token: string): Promise<{ success: boolean; message: string }> {
+  return fetchJson(`/auth/bearer-token/${encodeURIComponent(name)}`, {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  })
+}
+
+export async function saveApiKey(name: string, key: string): Promise<{ success: boolean; message: string }> {
+  return fetchJson(`/auth/api-key/${encodeURIComponent(name)}`, {
+    method: 'POST',
+    body: JSON.stringify({ key }),
+  })
+}
+
+export interface DiscoveryResult {
+  issuer?: string
+  authorization_endpoint?: string
+  token_endpoint?: string
+  registration_endpoint?: string
+  scopes_supported?: string[]
+  grant_types_supported?: string[]
+  response_types_supported?: string[]
+  discovery_url?: string
+}
+
+export async function evaluateTools(name: string): Promise<EvaluationResult> {
+  return fetchJson(`/servers/${encodeURIComponent(name)}/evaluate`)
+}
+
+export async function getEvalReport(name: string): Promise<FullEvalReport | null> {
+  try {
+    return await fetchJson(`/servers/${encodeURIComponent(name)}/evaluate/report`)
+  } catch {
+    return null
+  }
+}
+
+export async function evaluateToolsFull(name: string): Promise<FullEvalReport> {
+  return fetchJson(`/servers/${encodeURIComponent(name)}/evaluate/full`)
+}
+
+export interface LlmEvalResult {
+  layer?: FullLayerResult
+  overall_score?: number
+  gate_passed?: boolean
+  error?: string
+  metadata: {
+    llm_provider: string
+    llm_model: string
+    llm_error?: string
+    ground_truth_loaded?: boolean
+  }
+  per_llm?: Record<string, {
+    layer?: FullLayerResult
+    error?: string
+    metadata: { llm_provider: string; llm_model: string; llm_error?: string }
+  }>
+}
+
+export async function evaluateLlm(name: string, llms?: string[]): Promise<LlmEvalResult> {
+  const params = llms?.length ? `?llms=${llms.join(',')}` : ''
+  return fetchJson(`/servers/${encodeURIComponent(name)}/evaluate/llm${params}`)
+}
+
+export interface LlmConfigInfo {
+  provider: string
+  model: string
+  has_credentials: boolean
+  source?: string
+}
+
+export async function getLlmConfigs(): Promise<{ configs: Record<string, LlmConfigInfo>; default: string | null }> {
+  return fetchJson('/llm-configs')
+}
+
+export interface GroundTruthData {
+  server_name: string
+  test_cases: Array<{
+    expected_tool_selection: string[]
+    prompts: string[]
+    expected_args?: Record<string, unknown>
+  }>
+  test_case_count: number
+  prompt_count: number
+}
+
+export async function getGroundTruth(name: string): Promise<GroundTruthData | null> {
+  try {
+    return await fetchJson(`/servers/${encodeURIComponent(name)}/ground-truth`)
+  } catch {
+    return null
+  }
+}
+
+export async function uploadGroundTruth(name: string, file: File): Promise<{ success: boolean; test_case_count: number; prompt_count: number; warnings: string[] }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(`${BASE}/servers/${encodeURIComponent(name)}/ground-truth`, {
+    method: 'POST',
+    body: formData,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(err.detail || res.statusText)
+  }
+  return res.json()
+}
+
+export async function deleteGroundTruth(name: string): Promise<{ success: boolean }> {
+  return fetchJson(`/servers/${encodeURIComponent(name)}/ground-truth`, { method: 'DELETE' })
+}
+
+export function downloadGroundTruthTemplate(name: string): void {
+  window.open(`${BASE}/servers/${encodeURIComponent(name)}/ground-truth/template`, '_blank')
+}
+
+export async function markFalsePositive(
+  name: string,
+  checkKey: string,
+  justification: string | null,
+): Promise<{ success: boolean; false_positives: Record<string, string> }> {
+  return fetchJson(`/servers/${encodeURIComponent(name)}/evaluate/false-positive`, {
+    method: 'POST',
+    body: JSON.stringify({ check_key: checkKey, justification }),
+  })
+}
+
+export async function discoverOAuthEndpoints(url: string, sslVerify: boolean = true): Promise<DiscoveryResult> {
+  return fetchJson('/auth/discover', {
+    method: 'POST',
+    body: JSON.stringify({ url, ssl_verify: sslVerify }),
+  })
+}
+
+export async function uploadTools(name: string, file: File): Promise<{ success: boolean; message: string; tools: ToolInfo[]; count: number; warnings: string[] }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(`${BASE}/servers/${encodeURIComponent(name)}/tools/upload`, {
+    method: 'POST',
+    body: formData,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(err.detail || res.statusText)
+  }
+  return res.json()
+}
+
+export function downloadToolsTemplate(name: string): void {
+  window.open(`${BASE}/servers/${encodeURIComponent(name)}/tools/template`, '_blank')
+}
+
+export async function deleteUploadedTools(name: string): Promise<{ success: boolean }> {
+  return fetchJson(`/servers/${encodeURIComponent(name)}/tools/uploaded`, { method: 'DELETE' })
 }

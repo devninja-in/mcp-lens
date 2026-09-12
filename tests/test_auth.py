@@ -1,13 +1,14 @@
-import json
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from src.app.auth import (
-    _load_tokens,
-    _save_tokens,
+    _derive_base_urls,
     _server_name_to_env_key,
+    discover_oauth_metadata,
     get_auth_status,
     get_token,
+    set_bearer_token,
 )
 from src.app.models import McpServerConfig
 
@@ -17,55 +18,176 @@ def test_server_name_to_env_key():
     assert _server_name_to_env_key("my-server") == "MCP_MY_SERVER_TOKEN"
 
 
-def test_load_save_tokens(tmp_path, monkeypatch):
-    tokens_path = tmp_path / "tokens.json"
-    monkeypatch.setattr("src.app.auth.TOKENS_PATH", tokens_path)
-
-    assert _load_tokens() == {}
-
-    _save_tokens({"server1": {"access_token": "abc"}})
-    loaded = _load_tokens()
-    assert loaded["server1"]["access_token"] == "abc"
-
-
-def test_get_auth_status_no_auth():
+@pytest.mark.asyncio
+async def test_get_auth_status_no_auth(db):
     config = McpServerConfig(url="https://example.com", auth=False)
-    status = get_auth_status("test", config)
+    status = await get_auth_status("test", config)
     assert status["authenticated"] is True
 
 
-def test_get_auth_status_sso_missing(monkeypatch):
+@pytest.mark.asyncio
+async def test_get_auth_status_bearer_token_missing(db, monkeypatch):
     monkeypatch.delenv("MCP_TEST_SERVER_TOKEN", raising=False)
-    config = McpServerConfig(url="https://example.com", auth=True, auth_mode="sso")
-    status = get_auth_status("test-server", config)
+    config = McpServerConfig(url="https://example.com", auth=True, auth_mode="bearer_token")
+    status = await get_auth_status("test-server", config)
     assert status["authenticated"] is False
 
 
-def test_get_auth_status_sso_present(monkeypatch):
+@pytest.mark.asyncio
+async def test_get_auth_status_bearer_token_present(db, monkeypatch):
     monkeypatch.setenv("MCP_TEST_SERVER_TOKEN", "jwt123")
-    config = McpServerConfig(url="https://example.com", auth=True, auth_mode="sso")
-    status = get_auth_status("test-server", config)
+    config = McpServerConfig(url="https://example.com", auth=True, auth_mode="bearer_token")
+    status = await get_auth_status("test-server", config)
     assert status["authenticated"] is True
 
 
 @pytest.mark.asyncio
-async def test_get_token_sso(monkeypatch):
-    monkeypatch.setenv("MCP_MY_MCP_TOKEN", "sso-token-value")
-    config = McpServerConfig(url="https://example.com", auth=True, auth_mode="sso")
-    token = await get_token("my-mcp", config)
-    assert token == "sso-token-value"
+async def test_get_auth_status_bearer_from_db(db):
+    await set_bearer_token("db-server", "stored-token")
+    config = McpServerConfig(url="https://example.com", auth=True, auth_mode="bearer_token")
+    status = await get_auth_status("db-server", config)
+    assert status["authenticated"] is True
 
 
 @pytest.mark.asyncio
-async def test_get_token_sso_missing(monkeypatch):
+async def test_get_token_bearer(db, monkeypatch):
+    monkeypatch.setenv("MCP_MY_MCP_TOKEN", "bearer-token-value")
+    config = McpServerConfig(url="https://example.com", auth=True, auth_mode="bearer_token")
+    token = await get_token("my-mcp", config)
+    assert token == "bearer-token-value"
+
+
+@pytest.mark.asyncio
+async def test_get_token_bearer_missing(db, monkeypatch):
     monkeypatch.delenv("MCP_MISSING_TOKEN", raising=False)
-    config = McpServerConfig(url="https://example.com", auth=True, auth_mode="sso")
-    with pytest.raises(ValueError, match="SSO token not found"):
+    config = McpServerConfig(url="https://example.com", auth=True, auth_mode="bearer_token")
+    with pytest.raises(ValueError, match="Bearer token not found"):
         await get_token("missing", config)
 
 
 @pytest.mark.asyncio
-async def test_get_token_no_auth():
+async def test_get_token_no_auth(db):
     config = McpServerConfig(url="https://example.com", auth=False)
     token = await get_token("test", config)
     assert token is None
+
+
+@pytest.mark.asyncio
+async def test_get_token_bearer_from_db(db):
+    await set_bearer_token("db-server", "my-db-token")
+    config = McpServerConfig(url="https://example.com", auth=True, auth_mode="bearer_token")
+    token = await get_token("db-server", config)
+    assert token == "my-db-token"
+
+
+# --- Discovery tests ---
+
+
+def test_derive_base_urls():
+    urls = _derive_base_urls("https://example.com/org/project/mcp")
+    assert urls == [
+        "https://example.com/org/project/mcp",
+        "https://example.com/org/project",
+        "https://example.com/org",
+        "https://example.com",
+    ]
+
+
+def test_derive_base_urls_no_path():
+    urls = _derive_base_urls("https://example.com")
+    assert urls == ["https://example.com"]
+
+
+MOCK_OPENID_DOC = {
+    "issuer": "https://example.com",
+    "authorization_endpoint": "https://example.com/authorize",
+    "token_endpoint": "https://example.com/token",
+    "registration_endpoint": "https://example.com/register",
+    "scopes_supported": ["openid", "profile"],
+    "grant_types_supported": ["authorization_code"],
+    "response_types_supported": ["code"],
+}
+
+
+def _mock_response(status_code=200, json_data=None):
+    resp = MagicMock()
+    resp.status_code = status_code
+    resp.json.return_value = json_data or {}
+    return resp
+
+
+@pytest.mark.asyncio
+async def test_discover_oauth_metadata_openid(monkeypatch):
+    mock_client = AsyncMock()
+    mock_client.get.return_value = _mock_response(200, MOCK_OPENID_DOC)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    import httpx
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: mock_client)
+
+    result = await discover_oauth_metadata("https://example.com/mcp")
+    assert result["authorization_endpoint"] == "https://example.com/authorize"
+    assert result["token_endpoint"] == "https://example.com/token"
+    assert result["registration_endpoint"] == "https://example.com/register"
+    assert result["scopes_supported"] == ["openid", "profile"]
+    assert "discovery_url" in result
+
+
+@pytest.mark.asyncio
+async def test_discover_oauth_metadata_rfc8414_fallback(monkeypatch):
+    call_count = 0
+
+    async def mock_get(url):
+        nonlocal call_count
+        call_count += 1
+        if "openid-configuration" in url:
+            return _mock_response(404)
+        return _mock_response(200, MOCK_OPENID_DOC)
+
+    mock_client = AsyncMock()
+    mock_client.get = mock_get
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    import httpx
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: mock_client)
+
+    result = await discover_oauth_metadata("https://example.com")
+    assert result["authorization_endpoint"] == "https://example.com/authorize"
+    assert "oauth-authorization-server" in result["discovery_url"]
+
+
+@pytest.mark.asyncio
+async def test_discover_oauth_metadata_strips_path(monkeypatch):
+    async def mock_get(url):
+        if "example.com/mcp" in url:
+            return _mock_response(404)
+        if "example.com/.well-known/openid-configuration" in url:
+            return _mock_response(200, MOCK_OPENID_DOC)
+        return _mock_response(404)
+
+    mock_client = AsyncMock()
+    mock_client.get = mock_get
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    import httpx
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: mock_client)
+
+    result = await discover_oauth_metadata("https://example.com/mcp")
+    assert result["authorization_endpoint"] == "https://example.com/authorize"
+
+
+@pytest.mark.asyncio
+async def test_discover_oauth_metadata_all_fail(monkeypatch):
+    mock_client = AsyncMock()
+    mock_client.get.return_value = _mock_response(404)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    import httpx
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: mock_client)
+
+    with pytest.raises(ValueError, match="No OAuth metadata found"):
+        await discover_oauth_metadata("https://example.com/mcp")

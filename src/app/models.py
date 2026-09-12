@@ -11,6 +11,11 @@ class OAuthConfig(BaseModel):
     scopes: list[str] = []
 
 
+class ApiKeyConfig(BaseModel):
+    location: str = "header"
+    name: str = "X-API-Key"
+
+
 class McpServerConfig(BaseModel):
     enabled: bool = True
     url: str
@@ -20,6 +25,7 @@ class McpServerConfig(BaseModel):
     description: str = ""
     auth_mode: str | None = None
     oauth: OAuthConfig | None = None
+    api_key_config: ApiKeyConfig | None = None
     timeout: int = 30
 
 

@@ -1,0 +1,53 @@
+server: example-server
+tests:
+  - id: search_basic
+    tool: search_documents
+    description: Basic search returns array results
+    input:
+      query: "test"
+    assertions:
+      - path: "results"
+        type: is_array
+      - path: "results"
+        type: not_empty
+
+  - id: search_with_limit
+    tool: search_documents
+    description: Search respects limit parameter
+    input:
+      query: "test"
+      limit: 5
+    assertions:
+      - path: "results"
+        type: is_array
+      - path: "results"
+        type: length_lte
+        expected: 5
+
+  - id: search_empty_query
+    tool: search_documents
+    description: Empty query returns results
+    input:
+      query: ""
+    assertions:
+      - path: "results"
+        type: is_array
+
+  - id: search_missing_required
+    tool: search_documents
+    description: Missing required query param should error
+    input: {}
+    expect_error: true
+    tags: [negative]
+
+  - id: get_document_basic
+    tool: get_document
+    description: Get document by ID
+    input:
+      id: "doc-123"
+    assertions:
+      - path: "id"
+        type: equals
+        expected: "doc-123"
+      - path: "title"
+        type: is_string
