@@ -53,9 +53,8 @@ def _build_report(tools: list[dict], server_name: str = "", run_llm: bool = Fals
                 adapter = get_eval_adapter()
                 if adapter:
                     from .llm_eval import check_llm_all
-                    llm_layer = asyncio.get_event_loop().run_until_complete(
-                        check_llm_all(tools, adapter)
-                    )
+
+                    llm_layer = asyncio.get_event_loop().run_until_complete(check_llm_all(tools, adapter))
                     layers["llm"] = llm_layer
                     llm_meta = {
                         "llm_provider": llm_config["provider"],
@@ -92,6 +91,7 @@ def cmd_security(args: argparse.Namespace) -> int:
     layer = check_security_all(tools)
 
     from .scoring import compute_layer_score
+
     layer.score = compute_layer_score(layer)
 
     report = EvalReport(
@@ -102,10 +102,7 @@ def cmd_security(args: argparse.Namespace) -> int:
         gate_passed=layer.score >= 70,
     )
     print(render_text(report))
-    has_fail = any(
-        c.status.value == "fail"
-        for tr in layer.tools for c in tr.checks
-    )
+    has_fail = any(c.status.value == "fail" for tr in layer.tools for c in tr.checks)
     return 1 if has_fail else 0
 
 
@@ -115,6 +112,7 @@ def cmd_report(args: argparse.Namespace) -> int:
     config = ScoringConfig()
     if args.config:
         import json
+
         config_data = json.loads(Path(args.config).read_text())
         if "layer_weights" in config_data:
             config.layer_weights = config_data["layer_weights"]

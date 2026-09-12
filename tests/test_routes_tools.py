@@ -21,11 +21,14 @@ async def client(tmp_path, monkeypatch):
     db_module._engine = None
     db_module._session_factory = None
     await db_module.init_db()
-    await set_server_config("test-server", {
-        "url": "https://example.com/mcp",
-        "enabled": True,
-        "auth": False,
-    })
+    await set_server_config(
+        "test-server",
+        {
+            "url": "https://example.com/mcp",
+            "enabled": True,
+            "auth": False,
+        },
+    )
     with TestClient(app, raise_server_exceptions=False) as c:
         yield c
     await db_module.dispose_db()
@@ -433,6 +436,7 @@ async def test_get_ground_truth_template(client):
     assert "attachment" in resp.headers["content-disposition"]
 
     import yaml
+
     data = yaml.safe_load(resp.content)
     assert "test_cases" in data
     assert len(data["test_cases"]) == 2
@@ -688,14 +692,17 @@ async def test_evaluate_llm_with_mock_adapter(client, monkeypatch):
     save_tools("test-server", SAMPLE_TOOLS)
 
     # Mock LLM config
-    monkeypatch.setattr("src.app.routes.tools.load_llm_config", lambda: {
-        "provider": "mock",
-        "model": None,
-        "api_key": None,
-        "project": None,
-        "location": None,
-        "base_url": None,
-    })
+    monkeypatch.setattr(
+        "src.app.routes.tools.load_llm_config",
+        lambda: {
+            "provider": "mock",
+            "model": None,
+            "api_key": None,
+            "project": None,
+            "location": None,
+            "base_url": None,
+        },
+    )
     monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: MockAdapter())
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
@@ -729,14 +736,17 @@ async def test_evaluate_llm_with_ground_truth(client, monkeypatch):
     )
 
     # Mock LLM config
-    monkeypatch.setattr("src.app.routes.tools.load_llm_config", lambda: {
-        "provider": "mock",
-        "model": None,
-        "api_key": None,
-        "project": None,
-        "location": None,
-        "base_url": None,
-    })
+    monkeypatch.setattr(
+        "src.app.routes.tools.load_llm_config",
+        lambda: {
+            "provider": "mock",
+            "model": None,
+            "api_key": None,
+            "project": None,
+            "location": None,
+            "base_url": None,
+        },
+    )
     monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: MockAdapter())
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
@@ -833,14 +843,17 @@ async def test_evaluate_llm_import_error(client, monkeypatch):
     def mock_get_eval_adapter():
         raise ImportError("anthropic package not installed")
 
-    monkeypatch.setattr("src.app.routes.tools.load_llm_config", lambda: {
-        "provider": "anthropic",
-        "model": "claude-3-5-sonnet-20241022",
-        "api_key": None,
-        "project": None,
-        "location": None,
-        "base_url": None,
-    })
+    monkeypatch.setattr(
+        "src.app.routes.tools.load_llm_config",
+        lambda: {
+            "provider": "anthropic",
+            "model": "claude-3-5-sonnet-20241022",
+            "api_key": None,
+            "project": None,
+            "location": None,
+            "base_url": None,
+        },
+    )
     monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", mock_get_eval_adapter)
     monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: None)
 
@@ -860,14 +873,17 @@ async def test_evaluate_llm_execution_error(client, monkeypatch):
         async def select_tool(self, tools, user_prompt):
             raise RuntimeError("LLM API error")
 
-    monkeypatch.setattr("src.app.routes.tools.load_llm_config", lambda: {
-        "provider": "mock",
-        "model": None,
-        "api_key": None,
-        "project": None,
-        "location": None,
-        "base_url": None,
-    })
+    monkeypatch.setattr(
+        "src.app.routes.tools.load_llm_config",
+        lambda: {
+            "provider": "mock",
+            "model": None,
+            "api_key": None,
+            "project": None,
+            "location": None,
+            "base_url": None,
+        },
+    )
     monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: FailingAdapter())
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
@@ -912,12 +928,15 @@ async def test_evaluate_no_tools(client):
 async def test_fetch_tools_oauth_clears_tokens(client, monkeypatch):
     from src.app.database import set_server_config
 
-    await set_server_config("oauth-server", {
-        "url": "https://example.com/mcp",
-        "enabled": True,
-        "auth": True,
-        "auth_mode": "oauth",
-    })
+    await set_server_config(
+        "oauth-server",
+        {
+            "url": "https://example.com/mcp",
+            "enabled": True,
+            "auth": True,
+            "auth_mode": "oauth",
+        },
+    )
 
     async def mock_list_tools(name, config):
         return SAMPLE_TOOLS
@@ -942,10 +961,16 @@ async def test_evaluate_full_with_overlapping_tools(client):
     from src.app.tools_store import save_tools
 
     overlapping_tools = [
-        {"name": "search_users", "description": "Search for users by name or email address",
-         "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}}},
-        {"name": "find_users", "description": "Find users by name or email address",
-         "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}}},
+        {
+            "name": "search_users",
+            "description": "Search for users by name or email address",
+            "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+        },
+        {
+            "name": "find_users",
+            "description": "Find users by name or email address",
+            "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+        },
     ]
     save_tools("test-server", overlapping_tools)
 
@@ -962,17 +987,27 @@ async def test_evaluate_llm_with_server_description(client, monkeypatch):
     from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
-    await set_server_config("test-server", {
-        "url": "https://example.com/mcp",
-        "enabled": True,
-        "auth": False,
-        "description": "Atlassian MCP server for Confluence and Jira",
-    })
+    await set_server_config(
+        "test-server",
+        {
+            "url": "https://example.com/mcp",
+            "enabled": True,
+            "auth": False,
+            "description": "Atlassian MCP server for Confluence and Jira",
+        },
+    )
 
-    monkeypatch.setattr("src.app.routes.tools.load_llm_config", lambda: {
-        "provider": "mock", "model": None, "api_key": None,
-        "project": None, "location": None, "base_url": None,
-    })
+    monkeypatch.setattr(
+        "src.app.routes.tools.load_llm_config",
+        lambda: {
+            "provider": "mock",
+            "model": None,
+            "api_key": None,
+            "project": None,
+            "location": None,
+            "base_url": None,
+        },
+    )
     monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: MockAdapter())
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
@@ -987,10 +1022,17 @@ async def test_evaluate_llm_adapter_returns_none(client, monkeypatch):
 
     save_tools("test-server", SAMPLE_TOOLS)
 
-    monkeypatch.setattr("src.app.routes.tools.load_llm_config", lambda: {
-        "provider": "mock", "model": None, "api_key": None,
-        "project": None, "location": None, "base_url": None,
-    })
+    monkeypatch.setattr(
+        "src.app.routes.tools.load_llm_config",
+        lambda: {
+            "provider": "mock",
+            "model": None,
+            "api_key": None,
+            "project": None,
+            "location": None,
+            "base_url": None,
+        },
+    )
     monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: None)
     monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: None)
 
@@ -1005,17 +1047,30 @@ async def test_evaluate_llm_single_with_overlapping_tools(client, monkeypatch):
     from src.app.tools_store import save_tools
 
     overlapping_tools = [
-        {"name": "search_users", "description": "Search for users by name or email address",
-         "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}}},
-        {"name": "find_users", "description": "Find users by name or email address",
-         "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}}},
+        {
+            "name": "search_users",
+            "description": "Search for users by name or email address",
+            "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+        },
+        {
+            "name": "find_users",
+            "description": "Find users by name or email address",
+            "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+        },
     ]
     save_tools("test-server", overlapping_tools)
 
-    monkeypatch.setattr("src.app.routes.tools.load_llm_config", lambda: {
-        "provider": "mock", "model": None, "api_key": None,
-        "project": None, "location": None, "base_url": None,
-    })
+    monkeypatch.setattr(
+        "src.app.routes.tools.load_llm_config",
+        lambda: {
+            "provider": "mock",
+            "model": None,
+            "api_key": None,
+            "project": None,
+            "location": None,
+            "base_url": None,
+        },
+    )
     monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: MockAdapter())
     monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: None)
 
@@ -1031,10 +1086,17 @@ async def test_evaluate_llm_single_exception_handler(client, monkeypatch):
 
     save_tools("test-server", SAMPLE_TOOLS)
 
-    monkeypatch.setattr("src.app.routes.tools.load_llm_config", lambda: {
-        "provider": "mock", "model": None, "api_key": None,
-        "project": None, "location": None, "base_url": None,
-    })
+    monkeypatch.setattr(
+        "src.app.routes.tools.load_llm_config",
+        lambda: {
+            "provider": "mock",
+            "model": None,
+            "api_key": None,
+            "project": None,
+            "location": None,
+            "base_url": None,
+        },
+    )
     monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: "not_an_adapter")
     monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: None)
     monkeypatch.setattr("src.app.routes.tools.check_llm_all", _raise_runtime_error)
@@ -1075,10 +1137,16 @@ async def test_evaluate_llm_multi_with_overlapping_tools(client, monkeypatch):
     from src.app.tools_store import save_tools
 
     overlapping_tools = [
-        {"name": "search_users", "description": "Search for users by name or email address",
-         "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}}},
-        {"name": "find_users", "description": "Find users by name or email address",
-         "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}}},
+        {
+            "name": "search_users",
+            "description": "Search for users by name or email address",
+            "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+        },
+        {
+            "name": "find_users",
+            "description": "Find users by name or email address",
+            "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "email": {"type": "string"}}},
+        },
     ]
     save_tools("test-server", overlapping_tools)
 
@@ -1107,10 +1175,17 @@ async def test_evaluate_llm_single_http_exception_reraise(client, monkeypatch):
 
     save_tools("test-server", SAMPLE_TOOLS)
 
-    monkeypatch.setattr("src.app.routes.tools.load_llm_config", lambda: {
-        "provider": "mock", "model": None, "api_key": None,
-        "project": None, "location": None, "base_url": None,
-    })
+    monkeypatch.setattr(
+        "src.app.routes.tools.load_llm_config",
+        lambda: {
+            "provider": "mock",
+            "model": None,
+            "api_key": None,
+            "project": None,
+            "location": None,
+            "base_url": None,
+        },
+    )
     monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: "dummy")
     monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: None)
 

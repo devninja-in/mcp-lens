@@ -13,8 +13,11 @@ class TestTokenizeName:
         assert _tokenize_name("get_user_data") == {"get", "user", "data"}
 
     def test_camel_case(self):
-        assert _tokenize_name("getUserData") == {"get", "User", "Data"} or \
-               _tokenize_name("getUserData") == {"get", "user", "data"}
+        assert _tokenize_name("getUserData") == {"get", "User", "Data"} or _tokenize_name("getUserData") == {
+            "get",
+            "user",
+            "data",
+        }
         tokens = _tokenize_name("getUserData")
         assert all(t.islower() for t in tokens)
         assert "get" in tokens
@@ -45,8 +48,7 @@ class TestDescSimilarity:
         assert score < 0.5
 
     def test_partial(self):
-        score = _desc_similarity("Search for users in the database",
-                                 "Find users in the system")
+        score = _desc_similarity("Search for users in the database", "Find users in the system")
         assert 0.0 < score < 1.0
 
 

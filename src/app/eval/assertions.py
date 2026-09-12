@@ -65,9 +65,7 @@ def evaluate_assertion(assertion: Any, data: Any) -> CheckResult:
     return handler(value, assertion.expected, assertion.path)
 
 
-def _make_check(
-    name: str, passed: bool, path: str, msg_pass: str, msg_fail: str
-) -> CheckResult:
+def _make_check(name: str, passed: bool, path: str, msg_pass: str, msg_fail: str) -> CheckResult:
     return CheckResult(
         check_id=f"assertion.{name}",
         status=Status.PASS if passed else Status.FAIL,
@@ -79,7 +77,9 @@ def _make_check(
 
 def _assert_equals(value: Any, expected: Any, path: str) -> CheckResult:
     return _make_check(
-        "equals", value == expected, path,
+        "equals",
+        value == expected,
+        path,
         f"Value equals {expected!r}",
         f"Expected {expected!r}, got {value!r}",
     )
@@ -87,7 +87,9 @@ def _assert_equals(value: Any, expected: Any, path: str) -> CheckResult:
 
 def _assert_not_equals(value: Any, expected: Any, path: str) -> CheckResult:
     return _make_check(
-        "not_equals", value != expected, path,
+        "not_equals",
+        value != expected,
+        path,
         f"Value does not equal {expected!r}",
         f"Expected value to differ from {expected!r}",
     )
@@ -101,7 +103,9 @@ def _assert_contains(value: Any, expected: Any, path: str) -> CheckResult:
     else:
         passed = False
     return _make_check(
-        "contains", passed, path,
+        "contains",
+        passed,
+        path,
         f"Contains {expected!r}",
         f"Does not contain {expected!r}",
     )
@@ -115,7 +119,9 @@ def _assert_not_contains(value: Any, expected: Any, path: str) -> CheckResult:
     else:
         passed = True
     return _make_check(
-        "not_contains", passed, path,
+        "not_contains",
+        passed,
+        path,
         f"Does not contain {expected!r}",
         f"Contains {expected!r}",
     )
@@ -124,7 +130,9 @@ def _assert_not_contains(value: Any, expected: Any, path: str) -> CheckResult:
 def _assert_starts_with(value: Any, expected: Any, path: str) -> CheckResult:
     passed = isinstance(value, str) and value.startswith(str(expected))
     return _make_check(
-        "starts_with", passed, path,
+        "starts_with",
+        passed,
+        path,
         f"Starts with {expected!r}",
         f"Does not start with {expected!r}",
     )
@@ -133,7 +141,9 @@ def _assert_starts_with(value: Any, expected: Any, path: str) -> CheckResult:
 def _assert_ends_with(value: Any, expected: Any, path: str) -> CheckResult:
     passed = isinstance(value, str) and value.endswith(str(expected))
     return _make_check(
-        "ends_with", passed, path,
+        "ends_with",
+        passed,
+        path,
         f"Ends with {expected!r}",
         f"Does not end with {expected!r}",
     )
@@ -142,7 +152,9 @@ def _assert_ends_with(value: Any, expected: Any, path: str) -> CheckResult:
 def _assert_regex(value: Any, expected: Any, path: str) -> CheckResult:
     passed = isinstance(value, str) and bool(re.search(str(expected), value))
     return _make_check(
-        "regex", passed, path,
+        "regex",
+        passed,
+        path,
         f"Matches pattern {expected!r}",
         f"Does not match pattern {expected!r}",
     )
@@ -150,7 +162,9 @@ def _assert_regex(value: Any, expected: Any, path: str) -> CheckResult:
 
 def _assert_exists(value: Any, expected: Any, path: str) -> CheckResult:
     return _make_check(
-        "exists", value is not None, path,
+        "exists",
+        value is not None,
+        path,
         f"Path '{path}' exists",
         f"Path '{path}' does not exist",
     )
@@ -158,7 +172,9 @@ def _assert_exists(value: Any, expected: Any, path: str) -> CheckResult:
 
 def _assert_not_exists(value: Any, expected: Any, path: str) -> CheckResult:
     return _make_check(
-        "not_exists", value is None, path,
+        "not_exists",
+        value is None,
+        path,
         f"Path '{path}' does not exist",
         f"Path '{path}' exists",
     )
@@ -166,7 +182,9 @@ def _assert_not_exists(value: Any, expected: Any, path: str) -> CheckResult:
 
 def _assert_is_null(value: Any, expected: Any, path: str) -> CheckResult:
     return _make_check(
-        "is_null", value is None, path,
+        "is_null",
+        value is None,
+        path,
         "Value is null",
         f"Expected null, got {type(value).__name__}",
     )
@@ -174,7 +192,9 @@ def _assert_is_null(value: Any, expected: Any, path: str) -> CheckResult:
 
 def _assert_is_not_null(value: Any, expected: Any, path: str) -> CheckResult:
     return _make_check(
-        "is_not_null", value is not None, path,
+        "is_not_null",
+        value is not None,
+        path,
         "Value is not null",
         "Value is null",
     )
@@ -182,7 +202,9 @@ def _assert_is_not_null(value: Any, expected: Any, path: str) -> CheckResult:
 
 def _assert_is_array(value: Any, expected: Any, path: str) -> CheckResult:
     return _make_check(
-        "is_array", isinstance(value, list), path,
+        "is_array",
+        isinstance(value, list),
+        path,
         "Value is an array",
         f"Expected array, got {type(value).__name__}",
     )
@@ -190,7 +212,9 @@ def _assert_is_array(value: Any, expected: Any, path: str) -> CheckResult:
 
 def _assert_is_object(value: Any, expected: Any, path: str) -> CheckResult:
     return _make_check(
-        "is_object", isinstance(value, dict), path,
+        "is_object",
+        isinstance(value, dict),
+        path,
         "Value is an object",
         f"Expected object, got {type(value).__name__}",
     )
@@ -198,7 +222,9 @@ def _assert_is_object(value: Any, expected: Any, path: str) -> CheckResult:
 
 def _assert_is_string(value: Any, expected: Any, path: str) -> CheckResult:
     return _make_check(
-        "is_string", isinstance(value, str), path,
+        "is_string",
+        isinstance(value, str),
+        path,
         "Value is a string",
         f"Expected string, got {type(value).__name__}",
     )
@@ -206,8 +232,10 @@ def _assert_is_string(value: Any, expected: Any, path: str) -> CheckResult:
 
 def _assert_is_number(value: Any, expected: Any, path: str) -> CheckResult:
     return _make_check(
-        "is_number", isinstance(value, (int, float)) and not isinstance(value, bool),
-        path, "Value is a number",
+        "is_number",
+        isinstance(value, (int, float)) and not isinstance(value, bool),
+        path,
+        "Value is a number",
         f"Expected number, got {type(value).__name__}",
     )
 
@@ -218,7 +246,9 @@ def _assert_length(value: Any, expected: Any, path: str) -> CheckResult:
     except TypeError:
         return _make_check("length", False, path, "", "Value has no length")
     return _make_check(
-        "length", actual == int(expected), path,
+        "length",
+        actual == int(expected),
+        path,
         f"Length is {expected}",
         f"Expected length {expected}, got {actual}",
     )
@@ -230,7 +260,9 @@ def _assert_length_gte(value: Any, expected: Any, path: str) -> CheckResult:
     except TypeError:
         return _make_check("length_gte", False, path, "", "Value has no length")
     return _make_check(
-        "length_gte", actual >= int(expected), path,
+        "length_gte",
+        actual >= int(expected),
+        path,
         f"Length {actual} >= {expected}",
         f"Length {actual} < {expected}",
     )
@@ -242,7 +274,9 @@ def _assert_length_lte(value: Any, expected: Any, path: str) -> CheckResult:
     except TypeError:
         return _make_check("length_lte", False, path, "", "Value has no length")
     return _make_check(
-        "length_lte", actual <= int(expected), path,
+        "length_lte",
+        actual <= int(expected),
+        path,
         f"Length {actual} <= {expected}",
         f"Length {actual} > {expected}",
     )
@@ -251,7 +285,9 @@ def _assert_length_lte(value: Any, expected: Any, path: str) -> CheckResult:
 def _assert_gt(value: Any, expected: Any, path: str) -> CheckResult:
     passed = isinstance(value, (int, float)) and value > float(expected)
     return _make_check(
-        "gt", passed, path,
+        "gt",
+        passed,
+        path,
         f"{value} > {expected}",
         f"{value} is not > {expected}",
     )
@@ -260,7 +296,9 @@ def _assert_gt(value: Any, expected: Any, path: str) -> CheckResult:
 def _assert_gte(value: Any, expected: Any, path: str) -> CheckResult:
     passed = isinstance(value, (int, float)) and value >= float(expected)
     return _make_check(
-        "gte", passed, path,
+        "gte",
+        passed,
+        path,
         f"{value} >= {expected}",
         f"{value} is not >= {expected}",
     )
@@ -269,7 +307,9 @@ def _assert_gte(value: Any, expected: Any, path: str) -> CheckResult:
 def _assert_lt(value: Any, expected: Any, path: str) -> CheckResult:
     passed = isinstance(value, (int, float)) and value < float(expected)
     return _make_check(
-        "lt", passed, path,
+        "lt",
+        passed,
+        path,
         f"{value} < {expected}",
         f"{value} is not < {expected}",
     )
@@ -278,7 +318,9 @@ def _assert_lt(value: Any, expected: Any, path: str) -> CheckResult:
 def _assert_lte(value: Any, expected: Any, path: str) -> CheckResult:
     passed = isinstance(value, (int, float)) and value <= float(expected)
     return _make_check(
-        "lte", passed, path,
+        "lte",
+        passed,
+        path,
         f"{value} <= {expected}",
         f"{value} is not <= {expected}",
     )
@@ -290,7 +332,9 @@ def _assert_not_empty(value: Any, expected: Any, path: str) -> CheckResult:
     except TypeError:
         passed = value is not None
     return _make_check(
-        "not_empty", passed, path,
+        "not_empty",
+        passed,
+        path,
         "Value is not empty",
         "Value is empty",
     )
@@ -301,7 +345,9 @@ def _assert_subset(value: Any, expected: Any, path: str) -> CheckResult:
         return _make_check("subset", False, path, "", "Both values must be arrays for subset check")
     passed = all(item in value for item in expected)
     return _make_check(
-        "subset", passed, path,
+        "subset",
+        passed,
+        path,
         "Expected items are a subset",
         f"Missing items: {[x for x in expected if x not in value]}",
     )

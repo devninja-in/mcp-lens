@@ -10,7 +10,8 @@ from src.app.eval.cli import main
 @pytest.fixture
 def tools_yaml(tmp_path):
     f = tmp_path / "tools.yaml"
-    f.write_text(dedent("""\
+    f.write_text(
+        dedent("""\
         tools:
           - name: search_users
             description: Search for users by name or email address
@@ -25,18 +26,21 @@ def tools_yaml(tmp_path):
             annotations:
               readOnlyHint: true
               destructiveHint: false
-    """))
+    """)
+    )
     return str(f)
 
 
 @pytest.fixture
 def bad_tools_yaml(tmp_path):
     f = tmp_path / "bad_tools.yaml"
-    f.write_text(dedent("""\
+    f.write_text(
+        dedent("""\
         tools:
           - name: ""
             description: ""
-    """))
+    """)
+    )
     return str(f)
 
 
@@ -108,16 +112,30 @@ class TestCompare:
     def test_regression(self, tmp_path, capsys):
         baseline = tmp_path / "baseline.json"
         current = tmp_path / "current.json"
-        baseline.write_text(json.dumps({
-            "timestamp": "", "server_name": "test",
-            "overall_score": 90.0, "gate_passed": True,
-            "layers": {}, "metadata": {},
-        }))
-        current.write_text(json.dumps({
-            "timestamp": "", "server_name": "test",
-            "overall_score": 60.0, "gate_passed": False,
-            "layers": {}, "metadata": {},
-        }))
+        baseline.write_text(
+            json.dumps(
+                {
+                    "timestamp": "",
+                    "server_name": "test",
+                    "overall_score": 90.0,
+                    "gate_passed": True,
+                    "layers": {},
+                    "metadata": {},
+                }
+            )
+        )
+        current.write_text(
+            json.dumps(
+                {
+                    "timestamp": "",
+                    "server_name": "test",
+                    "overall_score": 60.0,
+                    "gate_passed": False,
+                    "layers": {},
+                    "metadata": {},
+                }
+            )
+        )
         code = main(["compare", str(baseline), str(current)])
         assert code == 1
         out = capsys.readouterr().out

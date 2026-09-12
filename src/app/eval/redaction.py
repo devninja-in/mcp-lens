@@ -13,12 +13,24 @@ _SECRET_PATTERNS = [
 ]
 
 _SECRET_KEY_NAMES = {
-    "api_key", "apikey", "api-key",
-    "password", "passwd", "pwd",
-    "secret", "token", "access_token", "refresh_token",
-    "authorization", "auth_token", "bearer",
-    "cookie", "session_id", "credentials",
-    "private_key", "client_secret",
+    "api_key",
+    "apikey",
+    "api-key",
+    "password",
+    "passwd",
+    "pwd",
+    "secret",
+    "token",
+    "access_token",
+    "refresh_token",
+    "authorization",
+    "auth_token",
+    "bearer",
+    "cookie",
+    "session_id",
+    "credentials",
+    "private_key",
+    "client_secret",
 }
 
 _REDACTED = "***REDACTED***"

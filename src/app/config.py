@@ -15,10 +15,7 @@ async def load_config() -> McpConfig:
     from .database import get_all_servers
 
     servers_data = await get_all_servers()
-    servers = {
-        name: McpServerConfig.model_validate(data)
-        for name, data in servers_data.items()
-    }
+    servers = {name: McpServerConfig.model_validate(data) for name, data in servers_data.items()}
     logger.debug("Loaded config with %d servers", len(servers))
     return McpConfig(**{"mcpServers": servers})
 

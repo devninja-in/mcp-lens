@@ -60,25 +60,29 @@ class TestDescNoFiller:
 
 class TestParamDescriptions:
     def test_all_described(self):
-        tool = _tool(inputSchema={
-            "type": "object",
-            "properties": {
-                "q": {"type": "string", "description": "Query string"},
-                "limit": {"type": "integer", "description": "Max results"},
-            },
-        })
+        tool = _tool(
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string", "description": "Query string"},
+                    "limit": {"type": "integer", "description": "Max results"},
+                },
+            }
+        )
         checks = check_tool_quality(tool)
         c = next(c for c in checks if c.check_id == "quality.param_all_described")
         assert c.status == Status.PASS
 
     def test_some_missing(self):
-        tool = _tool(inputSchema={
-            "type": "object",
-            "properties": {
-                "q": {"type": "string", "description": "Query string"},
-                "limit": {"type": "integer"},
-            },
-        })
+        tool = _tool(
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string", "description": "Query string"},
+                    "limit": {"type": "integer"},
+                },
+            }
+        )
         checks = check_tool_quality(tool)
         c = next(c for c in checks if c.check_id == "quality.param_all_described")
         assert c.status == Status.WARN
@@ -87,35 +91,41 @@ class TestParamDescriptions:
 
 class TestParamTypes:
     def test_all_typed(self):
-        tool = _tool(inputSchema={
-            "type": "object",
-            "properties": {
-                "q": {"type": "string"},
-                "limit": {"type": "integer"},
-            },
-        })
+        tool = _tool(
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string"},
+                    "limit": {"type": "integer"},
+                },
+            }
+        )
         checks = check_tool_quality(tool)
         c = next(c for c in checks if c.check_id == "quality.param_all_typed")
         assert c.status == Status.PASS
 
     def test_missing_types(self):
-        tool = _tool(inputSchema={
-            "type": "object",
-            "properties": {
-                "q": {"description": "Query"},
-            },
-        })
+        tool = _tool(
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "q": {"description": "Query"},
+                },
+            }
+        )
         checks = check_tool_quality(tool)
         c = next(c for c in checks if c.check_id == "quality.param_all_typed")
         assert c.status == Status.WARN
 
     def test_anyof_counts(self):
-        tool = _tool(inputSchema={
-            "type": "object",
-            "properties": {
-                "value": {"anyOf": [{"type": "string"}, {"type": "integer"}]},
-            },
-        })
+        tool = _tool(
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "value": {"anyOf": [{"type": "string"}, {"type": "integer"}]},
+                },
+            }
+        )
         checks = check_tool_quality(tool)
         c = next(c for c in checks if c.check_id == "quality.param_all_typed")
         assert c.status == Status.PASS
@@ -209,8 +219,13 @@ class TestEvaluateToolsCompat:
         assert summary["tool_count"] == 1
 
         dims = summary["dimension_averages"]
-        for key in ["description_quality", "input_schema_completeness",
-                     "required_fields", "naming_conventions", "annotations_metadata"]:
+        for key in [
+            "description_quality",
+            "input_schema_completeness",
+            "required_fields",
+            "naming_conventions",
+            "annotations_metadata",
+        ]:
             assert key in dims
 
         dist = summary["score_distribution"]

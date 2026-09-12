@@ -51,6 +51,7 @@ async def _make_jsonrpc_request(
     request_url = url
     if query_params:
         from urllib.parse import urlencode
+
         separator = "&" if "?" in url else "?"
         request_url = f"{url}{separator}{urlencode(query_params)}"
 
@@ -114,32 +115,24 @@ async def _try_request_with_refresh(
         raise
 
     if server_config.auth_mode not in ("oauth", "dcr"):
-        raise ReAuthRequiredError(
-            f"Server '{server_name}' returned {status}. Check your token."
-        )
+        raise ReAuthRequiredError(f"Server '{server_name}' returned {status}. Check your token.")
 
     logger.info("Got %s for '%s', attempting token refresh", status, server_name)
     new_token = await refresh_access_token(server_name, server_config)
     if not new_token:
         await clear_oauth_tokens(server_name)
-        raise ReAuthRequiredError(
-            f"Token expired for '{server_name}'. Re-authentication required."
-        )
+        raise ReAuthRequiredError(f"Token expired for '{server_name}'. Re-authentication required.")
 
     try:
         return await request_fn(new_token)
     except httpx.HTTPStatusError as e:
         if e.response.status_code in (401, 403):
             await clear_oauth_tokens(server_name)
-            raise ReAuthRequiredError(
-                f"Token expired for '{server_name}'. Re-authentication required."
-            ) from e
+            raise ReAuthRequiredError(f"Token expired for '{server_name}'. Re-authentication required.") from e
         raise
 
 
-async def mcp_initialize(
-    server_name: str, server_config: McpServerConfig
-) -> tuple[dict, str | None]:
+async def mcp_initialize(server_name: str, server_config: McpServerConfig) -> tuple[dict, str | None]:
     akc = _get_api_key_dict(server_config)
 
     async def do_init(token):
@@ -158,14 +151,14 @@ async def mcp_initialize(
         )
 
     result: tuple[dict, str | None] = await _try_request_with_refresh(
-        server_name, server_config, do_init,
+        server_name,
+        server_config,
+        do_init,
     )
     return result
 
 
-async def mcp_list_tools(
-    server_name: str, server_config: McpServerConfig
-) -> list[dict]:
+async def mcp_list_tools(server_name: str, server_config: McpServerConfig) -> list[dict]:
     akc = _get_api_key_dict(server_config)
 
     async def do_list_tools(token):
@@ -215,6 +208,8 @@ async def mcp_list_tools(
         return tools
 
     tools_result: list[dict] = await _try_request_with_refresh(
-        server_name, server_config, do_list_tools,
+        server_name,
+        server_config,
+        do_list_tools,
     )
     return tools_result

@@ -32,9 +32,7 @@ class TestToolSelection:
         scenario = FakeScenario(expected_tools=["search"])
         tools = [{"name": "search"}, {"name": "delete"}]
         adapter = MockAdapter(responses={"Find Alice": {"tool_name": "search", "arguments": {}}})
-        result = asyncio.get_event_loop().run_until_complete(
-            evaluate_tool_selection(scenario, tools, adapter)
-        )
+        result = asyncio.get_event_loop().run_until_complete(evaluate_tool_selection(scenario, tools, adapter))
         assert result.score == 100.0
         assert any(c.status == Status.PASS for c in result.checks)
 
@@ -42,9 +40,7 @@ class TestToolSelection:
         scenario = FakeScenario(expected_tools=["search"])
         tools = [{"name": "search"}, {"name": "delete"}]
         adapter = MockAdapter(responses={"Find Alice": {"tool_name": "delete", "arguments": {}}})
-        result = asyncio.get_event_loop().run_until_complete(
-            evaluate_tool_selection(scenario, tools, adapter)
-        )
+        result = asyncio.get_event_loop().run_until_complete(evaluate_tool_selection(scenario, tools, adapter))
         assert result.score == 0.0
         assert any(c.status == Status.FAIL for c in result.checks)
 
@@ -55,9 +51,7 @@ class TestToolSelection:
             {"name": "delete_all", "annotations": {"destructiveHint": True}},
         ]
         adapter = MockAdapter(responses={"Find Alice": {"tool_name": "delete_all", "arguments": {}}})
-        result = asyncio.get_event_loop().run_until_complete(
-            evaluate_tool_selection(scenario, tools, adapter)
-        )
+        result = asyncio.get_event_loop().run_until_complete(evaluate_tool_selection(scenario, tools, adapter))
         critical = [c for c in result.checks if c.severity == Severity.CRITICAL]
         assert len(critical) == 1
         assert critical[0].check_id == "agent.destructive_false_positive"
@@ -71,9 +65,7 @@ class TestArgGeneration:
         )
         tools = [{"name": "search"}]
         adapter = MockAdapter(responses={"Find Alice": {"tool_name": "search", "arguments": {"name": "Alice"}}})
-        result = asyncio.get_event_loop().run_until_complete(
-            evaluate_arg_generation(scenario, tools, adapter)
-        )
+        result = asyncio.get_event_loop().run_until_complete(evaluate_arg_generation(scenario, tools, adapter))
         assert result.score == 100.0
 
     def test_missing_arg(self):
@@ -83,9 +75,7 @@ class TestArgGeneration:
         )
         tools = [{"name": "search"}]
         adapter = MockAdapter(responses={"Find Alice": {"tool_name": "search", "arguments": {}}})
-        result = asyncio.get_event_loop().run_until_complete(
-            evaluate_arg_generation(scenario, tools, adapter)
-        )
+        result = asyncio.get_event_loop().run_until_complete(evaluate_arg_generation(scenario, tools, adapter))
         assert result.score == 0.0
         assert any(c.status == Status.FAIL for c in result.checks)
 
@@ -95,12 +85,12 @@ class TestArgGeneration:
             expected_args={"search": {"name": "Alice"}},
         )
         tools = [{"name": "search"}]
-        adapter = MockAdapter(responses={
-            "Find Alice": {"tool_name": "search", "arguments": {"name": "Alice", "extra": "val"}},
-        })
-        result = asyncio.get_event_loop().run_until_complete(
-            evaluate_arg_generation(scenario, tools, adapter)
+        adapter = MockAdapter(
+            responses={
+                "Find Alice": {"tool_name": "search", "arguments": {"name": "Alice", "extra": "val"}},
+            }
         )
+        result = asyncio.get_event_loop().run_until_complete(evaluate_arg_generation(scenario, tools, adapter))
         warns = [c for c in result.checks if c.status == Status.WARN]
         assert len(warns) == 1
 
@@ -108,9 +98,7 @@ class TestArgGeneration:
         scenario = FakeScenario(expected_tools=["search"])
         tools = [{"name": "search"}]
         adapter = MockAdapter(responses={"Find Alice": {"tool_name": "search", "arguments": {}}})
-        result = asyncio.get_event_loop().run_until_complete(
-            evaluate_arg_generation(scenario, tools, adapter)
-        )
+        result = asyncio.get_event_loop().run_until_complete(evaluate_arg_generation(scenario, tools, adapter))
         assert any(c.status == Status.SKIP for c in result.checks)
 
 
@@ -146,42 +134,32 @@ class TestTrajectory:
     def test_correct_sequence(self):
         steps = [{"tool": "search"}, {"tool": "get"}]
         expected = [{"tool": "search"}, {"tool": "get"}]
-        result = asyncio.get_event_loop().run_until_complete(
-            evaluate_trajectory(steps, expected)
-        )
+        result = asyncio.get_event_loop().run_until_complete(evaluate_trajectory(steps, expected))
         assert any(c.status == Status.PASS and "sequence" in c.check_id for c in result.checks)
 
     def test_wrong_first_tool(self):
         steps = [{"tool": "get"}, {"tool": "search"}]
         expected = [{"tool": "search"}, {"tool": "get"}]
-        result = asyncio.get_event_loop().run_until_complete(
-            evaluate_trajectory(steps, expected)
-        )
+        result = asyncio.get_event_loop().run_until_complete(evaluate_trajectory(steps, expected))
         first = next(c for c in result.checks if "first_tool" in c.check_id)
         assert first.status == Status.FAIL
 
     def test_unnecessary_calls(self):
         steps = [{"tool": "search"}, {"tool": "extra"}, {"tool": "get"}]
         expected = [{"tool": "search"}, {"tool": "get"}]
-        result = asyncio.get_event_loop().run_until_complete(
-            evaluate_trajectory(steps, expected)
-        )
+        result = asyncio.get_event_loop().run_until_complete(evaluate_trajectory(steps, expected))
         warns = [c for c in result.checks if "unnecessary" in c.check_id]
         assert len(warns) == 1
 
     def test_repeated_calls(self):
         steps = [{"tool": "search"}, {"tool": "search"}, {"tool": "get"}]
         expected = [{"tool": "search"}, {"tool": "get"}]
-        result = asyncio.get_event_loop().run_until_complete(
-            evaluate_trajectory(steps, expected)
-        )
+        result = asyncio.get_event_loop().run_until_complete(evaluate_trajectory(steps, expected))
         repeated = [c for c in result.checks if "repeated" in c.check_id]
         assert len(repeated) == 1
 
     def test_empty_trajectory(self):
-        result = asyncio.get_event_loop().run_until_complete(
-            evaluate_trajectory([], [])
-        )
+        result = asyncio.get_event_loop().run_until_complete(evaluate_trajectory([], []))
         assert any(c.check_id == "agent.trajectory.sequence" for c in result.checks)
 
 

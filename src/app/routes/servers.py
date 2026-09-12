@@ -15,10 +15,7 @@ router = APIRouter(prefix="/api/servers", tags=["servers"])
 @router.get("")
 async def list_servers() -> dict:
     config = await load_config()
-    return {"servers": {
-        name: server.model_dump(exclude_none=True)
-        for name, server in config.mcp_servers.items()
-    }}
+    return {"servers": {name: server.model_dump(exclude_none=True) for name, server in config.mcp_servers.items()}}
 
 
 @router.get("/{name}")

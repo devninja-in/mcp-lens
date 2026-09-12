@@ -20,10 +20,15 @@ def _make_report() -> EvalReport:
             "protocol": LayerResult(
                 layer="protocol",
                 score=90.0,
-                tools=[ToolResult("search", [
-                    CheckResult("p.name", Status.PASS, "Name is valid"),
-                    CheckResult("p.desc", Status.WARN, "Short description"),
-                ])],
+                tools=[
+                    ToolResult(
+                        "search",
+                        [
+                            CheckResult("p.name", Status.PASS, "Name is valid"),
+                            CheckResult("p.desc", Status.WARN, "Short description"),
+                        ],
+                    )
+                ],
             ),
         },
     )

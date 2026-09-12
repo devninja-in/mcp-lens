@@ -9,7 +9,8 @@ from src.app.eval.models import Status
 class TestLoadBenchmark:
     def test_load_valid(self, tmp_path):
         f = tmp_path / "bench.yaml"
-        f.write_text(dedent("""\
+        f.write_text(
+            dedent("""\
             benchmark:
               name: test-bench
               server_name: svc
@@ -21,7 +22,8 @@ class TestLoadBenchmark:
                 expected_args:
                   search_users:
                     name: "Alice"
-        """))
+        """)
+        )
         suite = load_benchmark(f)
         assert suite.name == "test-bench"
         assert len(suite.scenarios) == 1
@@ -31,7 +33,8 @@ class TestLoadBenchmark:
 
     def test_load_multiple_tasks(self, tmp_path):
         f = tmp_path / "bench.yaml"
-        f.write_text(dedent("""\
+        f.write_text(
+            dedent("""\
             benchmark:
               name: multi
             tasks:
@@ -42,19 +45,22 @@ class TestLoadBenchmark:
                 prompt: "B"
                 expected_tools: [b]
                 tags: [smoke]
-        """))
+        """)
+        )
         suite = load_benchmark(f)
         assert len(suite.scenarios) == 2
         assert suite.scenarios[1].tags == ["smoke"]
 
     def test_load_defaults(self, tmp_path):
         f = tmp_path / "bench.yaml"
-        f.write_text(dedent("""\
+        f.write_text(
+            dedent("""\
             benchmark: {}
             tasks:
               - id: t1
                 prompt: "X"
-        """))
+        """)
+        )
         suite = load_benchmark(f)
         assert suite.name == ""
         assert suite.scenarios[0].expected_tools == []
@@ -77,12 +83,12 @@ class TestRunBenchmark:
             ],
         )
         tools = [{"name": "search_users"}, {"name": "delete_users"}]
-        adapter = MockAdapter(responses={
-            "Find user": {"tool_name": "search_users", "arguments": {"name": "Alice"}},
-        })
-        result = asyncio.get_event_loop().run_until_complete(
-            run_benchmark(suite, tools, adapter)
+        adapter = MockAdapter(
+            responses={
+                "Find user": {"tool_name": "search_users", "arguments": {"name": "Alice"}},
+            }
         )
+        result = asyncio.get_event_loop().run_until_complete(run_benchmark(suite, tools, adapter))
         assert result.layer == "benchmark"
         assert len(result.tools) == 2
         selection = result.tools[0]
@@ -102,11 +108,11 @@ class TestRunBenchmark:
             ],
         )
         tools = [{"name": "search_users"}, {"name": "delete_users"}]
-        adapter = MockAdapter(responses={
-            "Find user": {"tool_name": "delete_users", "arguments": {}},
-        })
-        result = asyncio.get_event_loop().run_until_complete(
-            run_benchmark(suite, tools, adapter)
+        adapter = MockAdapter(
+            responses={
+                "Find user": {"tool_name": "delete_users", "arguments": {}},
+            }
         )
+        result = asyncio.get_event_loop().run_until_complete(run_benchmark(suite, tools, adapter))
         selection = result.tools[0]
         assert any(c.status == Status.FAIL for c in selection.checks)

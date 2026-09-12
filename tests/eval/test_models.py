@@ -19,8 +19,10 @@ class TestCheckResult:
 
     def test_to_dict(self):
         c = CheckResult(
-            check_id="test.check", status=Status.FAIL,
-            message="bad", severity=Severity.HIGH,
+            check_id="test.check",
+            status=Status.FAIL,
+            message="bad",
+            severity=Severity.HIGH,
         )
         d = c.to_dict()
         assert d["status"] == "fail"
@@ -43,41 +45,57 @@ class TestCheckResult:
 
 class TestToolResult:
     def test_passed_all_pass(self):
-        tr = ToolResult(tool_name="t", checks=[
-            CheckResult("a", Status.PASS, "ok"),
-            CheckResult("b", Status.PASS, "ok"),
-        ])
+        tr = ToolResult(
+            tool_name="t",
+            checks=[
+                CheckResult("a", Status.PASS, "ok"),
+                CheckResult("b", Status.PASS, "ok"),
+            ],
+        )
         assert tr.passed is True
 
     def test_passed_with_critical_fail(self):
-        tr = ToolResult(tool_name="t", checks=[
-            CheckResult("a", Status.PASS, "ok"),
-            CheckResult("b", Status.FAIL, "bad", Severity.CRITICAL),
-        ])
+        tr = ToolResult(
+            tool_name="t",
+            checks=[
+                CheckResult("a", Status.PASS, "ok"),
+                CheckResult("b", Status.FAIL, "bad", Severity.CRITICAL),
+            ],
+        )
         assert tr.passed is False
 
     def test_passed_with_low_fail(self):
-        tr = ToolResult(tool_name="t", checks=[
-            CheckResult("a", Status.FAIL, "minor", Severity.LOW),
-        ])
+        tr = ToolResult(
+            tool_name="t",
+            checks=[
+                CheckResult("a", Status.FAIL, "minor", Severity.LOW),
+            ],
+        )
         assert tr.passed is True
 
     def test_counts(self):
-        tr = ToolResult(tool_name="t", checks=[
-            CheckResult("a", Status.PASS, ""),
-            CheckResult("b", Status.FAIL, "", Severity.HIGH),
-            CheckResult("c", Status.WARN, ""),
-            CheckResult("d", Status.SKIP, ""),
-        ])
+        tr = ToolResult(
+            tool_name="t",
+            checks=[
+                CheckResult("a", Status.PASS, ""),
+                CheckResult("b", Status.FAIL, "", Severity.HIGH),
+                CheckResult("c", Status.WARN, ""),
+                CheckResult("d", Status.SKIP, ""),
+            ],
+        )
         assert tr.pass_count == 1
         assert tr.fail_count == 1
         assert tr.warn_count == 1
         assert tr.skip_count == 1
 
     def test_to_dict(self):
-        tr = ToolResult(tool_name="t", score=85.0, checks=[
-            CheckResult("a", Status.PASS, "ok"),
-        ])
+        tr = ToolResult(
+            tool_name="t",
+            score=85.0,
+            checks=[
+                CheckResult("a", Status.PASS, "ok"),
+            ],
+        )
         d = tr.to_dict()
         assert d["tool_name"] == "t"
         assert d["score"] == 85.0

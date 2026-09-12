@@ -12,16 +12,69 @@ WEIGHTS = {
 }
 
 ACTIONABLE_VERBS = {
-    "get", "set", "create", "update", "delete", "search", "list",
-    "fetch", "find", "add", "remove", "merge", "approve", "reject",
-    "execute", "run", "query", "send", "read", "write", "upload",
-    "download", "export", "import", "validate", "check", "test",
-    "connect", "disconnect", "start", "stop", "deploy", "publish",
-    "subscribe", "unsubscribe", "configure", "install", "move",
-    "copy", "archive", "restore", "convert", "parse", "generate",
-    "analyze", "compute", "calculate", "resolve", "discover",
-    "put", "patch", "post", "close", "open", "enable", "disable",
-    "reset", "refresh", "sync", "load", "save", "browse", "invite",
+    "get",
+    "set",
+    "create",
+    "update",
+    "delete",
+    "search",
+    "list",
+    "fetch",
+    "find",
+    "add",
+    "remove",
+    "merge",
+    "approve",
+    "reject",
+    "execute",
+    "run",
+    "query",
+    "send",
+    "read",
+    "write",
+    "upload",
+    "download",
+    "export",
+    "import",
+    "validate",
+    "check",
+    "test",
+    "connect",
+    "disconnect",
+    "start",
+    "stop",
+    "deploy",
+    "publish",
+    "subscribe",
+    "unsubscribe",
+    "configure",
+    "install",
+    "move",
+    "copy",
+    "archive",
+    "restore",
+    "convert",
+    "parse",
+    "generate",
+    "analyze",
+    "compute",
+    "calculate",
+    "resolve",
+    "discover",
+    "put",
+    "patch",
+    "post",
+    "close",
+    "open",
+    "enable",
+    "disable",
+    "reset",
+    "refresh",
+    "sync",
+    "load",
+    "save",
+    "browse",
+    "invite",
 }
 
 GENERIC_FILLERS = ["this tool", "a tool that", "tool for", "tool to"]
@@ -65,15 +118,9 @@ def _score_input_schema(tool: dict) -> dict:
 
     if props:
         checks["all_have_types"] = all(
-            "type" in p or "anyOf" in p or "oneOf" in p
-            for p in props.values()
-            if isinstance(p, dict)
+            "type" in p or "anyOf" in p or "oneOf" in p for p in props.values() if isinstance(p, dict)
         )
-        checks["all_have_descriptions"] = all(
-            "description" in p
-            for p in props.values()
-            if isinstance(p, dict)
-        )
+        checks["all_have_descriptions"] = all("description" in p for p in props.values() if isinstance(p, dict))
 
     score = sum(25 for v in checks.values() if v)
     return {"score": score, "checks": checks}
@@ -146,10 +193,7 @@ def _score_annotations(tool: dict) -> dict:
 
 
 def _compute_overall(dimensions: dict[str, dict]) -> float:
-    total = sum(
-        dimensions[dim]["score"] * weight
-        for dim, weight in WEIGHTS.items()
-    )
+    total = sum(dimensions[dim]["score"] * weight for dim, weight in WEIGHTS.items())
     return float(round(total, 1))
 
 

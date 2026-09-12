@@ -45,8 +45,7 @@ class ToolResult:
     @property
     def passed(self) -> bool:
         return not any(
-            c.status == Status.FAIL and c.severity in (Severity.CRITICAL, Severity.HIGH)
-            for c in self.checks
+            c.status == Status.FAIL and c.severity in (Severity.CRITICAL, Severity.HIGH) for c in self.checks
         )
 
     @property

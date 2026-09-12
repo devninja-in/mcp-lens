@@ -106,12 +106,14 @@ async def set_secret(server_name: str, secret_type: str, data: dict) -> None:
             existing.secret_data = json.dumps(data)
             existing.updated_at = now
         else:
-            session.add(McpSecret(
-                server_name=server_name,
-                secret_type=secret_type,
-                secret_data=json.dumps(data),
-                updated_at=now,
-            ))
+            session.add(
+                McpSecret(
+                    server_name=server_name,
+                    secret_type=secret_type,
+                    secret_data=json.dumps(data),
+                    updated_at=now,
+                )
+            )
 
 
 async def delete_secret(server_name: str, secret_type: str) -> None:
@@ -145,11 +147,13 @@ async def set_server_config(name: str, config_data: dict) -> None:
             existing.config_data = json.dumps(config_data)
             existing.updated_at = now
         else:
-            session.add(McpServer(
-                name=name,
-                config_data=json.dumps(config_data),
-                updated_at=now,
-            ))
+            session.add(
+                McpServer(
+                    name=name,
+                    config_data=json.dumps(config_data),
+                    updated_at=now,
+                )
+            )
 
 
 async def delete_server_config(name: str) -> None:
@@ -177,12 +181,14 @@ async def save_eval_report(server_name: str, report_data: dict, has_llm: bool = 
             existing.has_llm = has_llm
             existing.updated_at = now
         else:
-            session.add(EvalResult(
-                server_name=server_name,
-                report_data=json.dumps(report_data),
-                has_llm=has_llm,
-                updated_at=now,
-            ))
+            session.add(
+                EvalResult(
+                    server_name=server_name,
+                    report_data=json.dumps(report_data),
+                    has_llm=has_llm,
+                    updated_at=now,
+                )
+            )
 
 
 async def get_ground_truth(server_name: str) -> dict | None:
@@ -191,6 +197,7 @@ async def get_ground_truth(server_name: str) -> dict | None:
         if result is None:
             return None
         import yaml
+
         data: dict = yaml.safe_load(result.yaml_data)
         return data
 
@@ -203,11 +210,13 @@ async def save_ground_truth(server_name: str, yaml_content: str) -> None:
             existing.yaml_data = yaml_content
             existing.updated_at = now
         else:
-            session.add(GroundTruth(
-                server_name=server_name,
-                yaml_data=yaml_content,
-                updated_at=now,
-            ))
+            session.add(
+                GroundTruth(
+                    server_name=server_name,
+                    yaml_data=yaml_content,
+                    updated_at=now,
+                )
+            )
 
 
 async def delete_ground_truth(server_name: str) -> None:

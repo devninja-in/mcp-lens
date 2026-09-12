@@ -91,8 +91,11 @@ async def fetch_tools(name: str) -> dict:
     except ReAuthRequiredError as e:
         logger.warning("Re-auth required while fetching tools for '%s'", name)
         return {
-            "success": False, "message": str(e),
-            "tools": [], "count": 0, "reauth": True,
+            "success": False,
+            "message": str(e),
+            "tools": [],
+            "count": 0,
+            "reauth": True,
         }
     except Exception as e:
         logger.error("Failed to fetch tools from '%s': %s", name, e)
@@ -164,7 +167,9 @@ async def evaluate_full(name: str) -> dict:
     report = apply_scoring(report)
     logger.info(
         "Full evaluation complete for '%s': score=%.1f gate=%s",
-        name, report.overall_score, report.gate_passed,
+        name,
+        report.overall_score,
+        report.gate_passed,
     )
     result = report.to_dict()
     await save_eval_report(name, result, has_llm=False)
@@ -268,10 +273,12 @@ async def download_ground_truth_template(name: str) -> Response:
         hint = f"TODO: Add a prompt that should trigger {tool_name}"
         if desc:
             hint += f" ({desc[:80]})"
-        test_cases.append({
-            "expected_tool_selection": [tool_name],
-            "prompts": [hint],
-        })
+        test_cases.append(
+            {
+                "expected_tool_selection": [tool_name],
+                "prompts": [hint],
+            }
+        )
     yaml_text = yaml.dump({"test_cases": test_cases}, default_flow_style=False, sort_keys=False, allow_unicode=True)
     return Response(
         content=yaml_text,
@@ -322,7 +329,10 @@ async def evaluate_llm(name: str, llms: str | None = None) -> dict:
 
         logger.info(
             "Starting LLM evaluation for '%s' (%d tools) with provider=%s model=%s",
-            name, len(tools), llm_config["provider"], llm_config.get("model") or "default",
+            name,
+            len(tools),
+            llm_config["provider"],
+            llm_config.get("model") or "default",
         )
         try:
             adapter = get_eval_adapter()
@@ -352,7 +362,9 @@ async def evaluate_llm(name: str, llms: str | None = None) -> dict:
             report = apply_scoring(report)
             logger.info(
                 "LLM evaluation complete for '%s': score=%.1f gate=%s",
-                name, report.overall_score, report.gate_passed,
+                name,
+                report.overall_score,
+                report.gate_passed,
             )
 
             eval_result = {
@@ -434,7 +446,9 @@ async def evaluate_llm(name: str, llms: str | None = None) -> dict:
     report = apply_scoring(report)
     logger.info(
         "Multi-LLM evaluation complete for '%s': score=%.1f gate=%s",
-        name, report.overall_score, report.gate_passed,
+        name,
+        report.overall_score,
+        report.gate_passed,
     )
 
     result: dict = {
@@ -511,11 +525,13 @@ async def upload_tools(name: str, file: UploadFile) -> dict:
                 raise HTTPException(status_code=400, detail=f"tools[{i}].inputSchema must be an object")
             if schema.get("type") != "object":
                 warnings.append(f"tools[{i}] '{name_val}' inputSchema.type should be 'object'")
-        validated.append({
-            "name": name_val.strip(),
-            "description": tool.get("description", ""),
-            "inputSchema": schema or {"type": "object", "properties": {}},
-        })
+        validated.append(
+            {
+                "name": name_val.strip(),
+                "description": tool.get("description", ""),
+                "inputSchema": schema or {"type": "object", "properties": {}},
+            }
+        )
 
     save_tools(name, validated, source="uploaded")
     logger.info("Uploaded %d tool definitions for '%s'", len(validated), name)

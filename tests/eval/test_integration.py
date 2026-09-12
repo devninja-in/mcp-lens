@@ -26,8 +26,7 @@ class TestEndToEndGoodTools:
         result = check_security_all(GOOD_TOOLS)
         assert result.layer == "security"
         critical_fails = [
-            c for tr in result.tools for c in tr.checks
-            if c.status == Status.FAIL and c.severity == Severity.CRITICAL
+            c for tr in result.tools for c in tr.checks if c.status == Status.FAIL and c.severity == Severity.CRITICAL
         ]
         assert len(critical_fails) == 0
 
@@ -82,8 +81,7 @@ class TestEndToEndBadTools:
     def test_security_finds_issues(self):
         result = check_security_all(BAD_TOOLS)
         critical = [
-            c for tr in result.tools for c in tr.checks
-            if c.status == Status.FAIL and c.severity == Severity.CRITICAL
+            c for tr in result.tools for c in tr.checks if c.status == Status.FAIL and c.severity == Severity.CRITICAL
         ]
         assert len(critical) > 0
 
@@ -120,9 +118,7 @@ class TestEndToEndWithLlm:
             "security": check_security_all(GOOD_TOOLS),
         }
 
-        llm_layer = asyncio.get_event_loop().run_until_complete(
-            check_llm_all(GOOD_TOOLS, adapter)
-        )
+        llm_layer = asyncio.get_event_loop().run_until_complete(check_llm_all(GOOD_TOOLS, adapter))
         layers["llm"] = llm_layer
 
         report = EvalReport(

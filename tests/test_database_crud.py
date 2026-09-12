@@ -219,6 +219,7 @@ async def test_migrate_tokens_json(tmp_path, monkeypatch):
     await db_module._migrate_tokens_json()
 
     from src.app.database import get_secret
+
     bearer = await get_secret("myserver", "bearer")
     assert bearer == "test_token_123"
 
@@ -234,6 +235,7 @@ async def test_migrate_tokens_json_skip_existing(tmp_path, monkeypatch):
     await db_module.init_db()
 
     from src.app.database import set_secret
+
     await set_secret("existing", "bearer", "existing_val")
 
     tokens_file = tmp_path / "tokens.json"
@@ -244,6 +246,7 @@ async def test_migrate_tokens_json_skip_existing(tmp_path, monkeypatch):
     await db_module._migrate_tokens_json()
 
     from src.app.database import get_secret
+
     result = await get_secret("newserver", "bearer")
     assert result is None
 
@@ -259,17 +262,14 @@ async def test_migrate_mcp_json(tmp_path, monkeypatch):
     await db_module.init_db()
 
     mcp_file = tmp_path / "mcp.json"
-    mcp_data = {
-        "mcpServers": {
-            "server1": {"url": "https://example.com/mcp", "enabled": True, "auth": False}
-        }
-    }
+    mcp_data = {"mcpServers": {"server1": {"url": "https://example.com/mcp", "enabled": True, "auth": False}}}
     mcp_file.write_text(json.dumps(mcp_data))
     monkeypatch.chdir(tmp_path)
 
     await db_module._migrate_mcp_json()
 
     from src.app.database import get_server_config
+
     config = await get_server_config("server1")
     assert config is not None
     assert config["url"] == "https://example.com/mcp"
@@ -286,20 +286,18 @@ async def test_migrate_mcp_json_skip_existing(tmp_path, monkeypatch):
     await db_module.init_db()
 
     from src.app.database import set_server_config
+
     await set_server_config("existing", {"url": "https://existing.com", "enabled": True, "auth": False})
 
     mcp_file = tmp_path / "mcp.json"
-    mcp_data = {
-        "mcpServers": {
-            "new-server": {"url": "https://new.com", "enabled": True, "auth": False}
-        }
-    }
+    mcp_data = {"mcpServers": {"new-server": {"url": "https://new.com", "enabled": True, "auth": False}}}
     mcp_file.write_text(json.dumps(mcp_data))
     monkeypatch.chdir(tmp_path)
 
     await db_module._migrate_mcp_json()
 
     from src.app.database import get_server_config
+
     config = await get_server_config("new-server")
     assert config is None
 
@@ -354,6 +352,7 @@ async def test_migrate_tokens_dcr_and_sso(tmp_path, monkeypatch):
     await db_module._migrate_tokens_json()
 
     from src.app.database import get_secret
+
     dcr = await get_secret("myserver", "dcr")
     assert dcr == {"client_id": "cid", "client_secret": "csec"}
 

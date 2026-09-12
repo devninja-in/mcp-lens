@@ -52,6 +52,7 @@ def validate_url(url: str) -> str:
 def _get_callback_url() -> str:
     return f"http://localhost:{get_backend_port()}/mcp/oauth/callback"
 
+
 _pending_flows: dict[str, dict] = {}
 
 
@@ -110,9 +111,7 @@ async def _register_dcr_client(server_config: McpServerConfig) -> tuple[str, str
     async with httpx.AsyncClient(verify=server_config.ssl_verify) as client:
         resp = await client.post(oauth.registration_endpoint, json=payload)
         if resp.status_code >= 400:
-            logger.error(
-                "DCR registration failed (%s): %s", resp.status_code, resp.text
-            )
+            logger.error("DCR registration failed (%s): %s", resp.status_code, resp.text)
         resp.raise_for_status()
         data = resp.json()
         return data["client_id"], data.get("client_secret")
@@ -131,9 +130,14 @@ async def start_oauth_flow(server_name: str, server_config: McpServerConfig) -> 
             client_secret = dcr_data.get("client_secret")
         else:
             client_id, client_secret = await _register_dcr_client(server_config)
-            await set_secret(server_name, "dcr", {
-                "client_id": client_id, "client_secret": client_secret,
-            })
+            await set_secret(
+                server_name,
+                "dcr",
+                {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                },
+            )
     else:
         secret_env = oauth.client_secret_env
         if secret_env:
@@ -145,9 +149,7 @@ async def start_oauth_flow(server_name: str, server_config: McpServerConfig) -> 
 
     state = secrets.token_urlsafe(32)
     code_verifier = secrets.token_urlsafe(64)
-    code_challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode()).digest()
-    ).rstrip(b"=").decode()
+    code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).rstrip(b"=").decode()
 
     _pending_flows[state] = {
         "server_name": server_name,
@@ -194,11 +196,15 @@ async def handle_oauth_callback(state: str, code: str) -> str:
         resp.raise_for_status()
         token_resp = resp.json()
 
-    await set_secret(flow["server_name"], "oauth", {
-        "access_token": token_resp["access_token"],
-        "refresh_token": token_resp.get("refresh_token"),
-        "token_type": token_resp.get("token_type", "Bearer"),
-    })
+    await set_secret(
+        flow["server_name"],
+        "oauth",
+        {
+            "access_token": token_resp["access_token"],
+            "refresh_token": token_resp.get("refresh_token"),
+            "token_type": token_resp.get("token_type", "Bearer"),
+        },
+    )
     server: str = flow["server_name"]
     return server
 
@@ -211,9 +217,7 @@ async def get_token(server_name: str, server_config: McpServerConfig) -> str | N
         token = await _get_bearer_token(server_name)
         if token:
             return token
-        raise ValueError(
-            f"Bearer token not found. Set {_server_name_to_env_key(server_name)} in .env"
-        )
+        raise ValueError(f"Bearer token not found. Set {_server_name_to_env_key(server_name)} in .env")
 
     if server_config.auth_mode == "api_key":
         key = await _get_api_key(server_name)
@@ -229,9 +233,7 @@ async def get_token(server_name: str, server_config: McpServerConfig) -> str | N
     return None
 
 
-async def refresh_access_token(
-    server_name: str, server_config: McpServerConfig
-) -> str | None:
+async def refresh_access_token(server_name: str, server_config: McpServerConfig) -> str | None:
     if server_config.auth_mode not in ("oauth", "dcr"):
         return None
 
@@ -272,7 +274,9 @@ async def refresh_access_token(
             if resp.status_code >= 400:
                 logger.warning(
                     "Token refresh failed for '%s' (%s): %s",
-                    server_name, resp.status_code, resp.text,
+                    server_name,
+                    resp.status_code,
+                    resp.text,
                 )
                 return None
             token_resp = resp.json()
@@ -280,11 +284,15 @@ async def refresh_access_token(
         logger.exception("Token refresh request failed for '%s'", server_name)
         return None
 
-    await set_secret(server_name, "oauth", {
-        "access_token": token_resp["access_token"],
-        "refresh_token": token_resp.get("refresh_token", oauth_data["refresh_token"]),
-        "token_type": token_resp.get("token_type", "Bearer"),
-    })
+    await set_secret(
+        server_name,
+        "oauth",
+        {
+            "access_token": token_resp["access_token"],
+            "refresh_token": token_resp.get("refresh_token", oauth_data["refresh_token"]),
+            "token_type": token_resp.get("token_type", "Bearer"),
+        },
+    )
     logger.info("Token refreshed successfully for '%s'", server_name)
     refreshed_token: str | None = token_resp["access_token"]
     return refreshed_token

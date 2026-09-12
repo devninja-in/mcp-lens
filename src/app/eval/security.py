@@ -8,26 +8,79 @@ from .models import CheckResult, LayerResult, Severity, Status, ToolResult
 logger = logging.getLogger(__name__)
 
 READ_VERBS = {
-    "get", "list", "search", "find", "read", "fetch", "query", "browse",
-    "view", "show", "display", "check", "verify", "validate", "inspect",
-    "describe", "count",
+    "get",
+    "list",
+    "search",
+    "find",
+    "read",
+    "fetch",
+    "query",
+    "browse",
+    "view",
+    "show",
+    "display",
+    "check",
+    "verify",
+    "validate",
+    "inspect",
+    "describe",
+    "count",
 }
 
 WRITE_VERBS = {
-    "create", "update", "set", "put", "patch", "post", "add", "modify",
-    "change", "edit", "save", "write", "insert", "upsert", "merge",
-    "configure", "enable", "disable",
+    "create",
+    "update",
+    "set",
+    "put",
+    "patch",
+    "post",
+    "add",
+    "modify",
+    "change",
+    "edit",
+    "save",
+    "write",
+    "insert",
+    "upsert",
+    "merge",
+    "configure",
+    "enable",
+    "disable",
 }
 
 DELETE_VERBS = {
-    "delete", "remove", "destroy", "drop", "purge", "clear", "erase",
-    "wipe", "reset", "revoke", "cancel", "terminate", "kill",
+    "delete",
+    "remove",
+    "destroy",
+    "drop",
+    "purge",
+    "clear",
+    "erase",
+    "wipe",
+    "reset",
+    "revoke",
+    "cancel",
+    "terminate",
+    "kill",
 }
 
 EXTERNAL_VERBS = {
-    "send", "publish", "post", "email", "notify", "broadcast", "transfer",
-    "push", "deploy", "release", "submit", "forward", "export", "upload",
-    "share", "invite",
+    "send",
+    "publish",
+    "post",
+    "email",
+    "notify",
+    "broadcast",
+    "transfer",
+    "push",
+    "deploy",
+    "release",
+    "submit",
+    "forward",
+    "export",
+    "upload",
+    "share",
+    "invite",
 }
 
 _CAMEL_SPLIT = re.compile(r"[A-Z][a-z]*|[a-z]+")
@@ -185,7 +238,7 @@ def _check_destructive_without_guard(tool: dict) -> CheckResult:
                 "current_value": None,
                 "suggestion": (
                     'Add annotations: {"destructiveHint": true, "readOnlyHint": false} '
-                    'so agents know to require user confirmation.'
+                    "so agents know to require user confirmation."
                 ),
             },
         )

@@ -14,29 +14,44 @@ class TestComputeLayerScore:
     def test_all_pass(self):
         lr = LayerResult(
             layer="protocol",
-            tools=[ToolResult("t", [
-                CheckResult("a", Status.PASS, "ok"),
-                CheckResult("b", Status.PASS, "ok"),
-            ])],
+            tools=[
+                ToolResult(
+                    "t",
+                    [
+                        CheckResult("a", Status.PASS, "ok"),
+                        CheckResult("b", Status.PASS, "ok"),
+                    ],
+                )
+            ],
         )
         assert compute_layer_score(lr) == 100.0
 
     def test_all_fail(self):
         lr = LayerResult(
             layer="protocol",
-            tools=[ToolResult("t", [
-                CheckResult("a", Status.FAIL, "bad", Severity.HIGH),
-            ])],
+            tools=[
+                ToolResult(
+                    "t",
+                    [
+                        CheckResult("a", Status.FAIL, "bad", Severity.HIGH),
+                    ],
+                )
+            ],
         )
         assert compute_layer_score(lr) == 0.0
 
     def test_mixed(self):
         lr = LayerResult(
             layer="protocol",
-            tools=[ToolResult("t", [
-                CheckResult("a", Status.PASS, "ok", Severity.HIGH),
-                CheckResult("b", Status.FAIL, "bad", Severity.LOW),
-            ])],
+            tools=[
+                ToolResult(
+                    "t",
+                    [
+                        CheckResult("a", Status.PASS, "ok", Severity.HIGH),
+                        CheckResult("b", Status.FAIL, "bad", Severity.LOW),
+                    ],
+                )
+            ],
         )
         score = compute_layer_score(lr)
         assert 0 < score < 100
@@ -44,9 +59,14 @@ class TestComputeLayerScore:
     def test_skip_counts_as_pass(self):
         lr = LayerResult(
             layer="protocol",
-            tools=[ToolResult("t", [
-                CheckResult("a", Status.SKIP, "skip"),
-            ])],
+            tools=[
+                ToolResult(
+                    "t",
+                    [
+                        CheckResult("a", Status.SKIP, "skip"),
+                    ],
+                )
+            ],
         )
         assert compute_layer_score(lr) == 100.0
 
@@ -57,17 +77,27 @@ class TestComputeLayerScore:
     def test_severity_weighting(self):
         lr_critical = LayerResult(
             layer="x",
-            tools=[ToolResult("t", [
-                CheckResult("a", Status.FAIL, "", Severity.CRITICAL),
-                CheckResult("b", Status.PASS, "", Severity.INFO),
-            ])],
+            tools=[
+                ToolResult(
+                    "t",
+                    [
+                        CheckResult("a", Status.FAIL, "", Severity.CRITICAL),
+                        CheckResult("b", Status.PASS, "", Severity.INFO),
+                    ],
+                )
+            ],
         )
         lr_low = LayerResult(
             layer="x",
-            tools=[ToolResult("t", [
-                CheckResult("a", Status.FAIL, "", Severity.LOW),
-                CheckResult("b", Status.PASS, "", Severity.INFO),
-            ])],
+            tools=[
+                ToolResult(
+                    "t",
+                    [
+                        CheckResult("a", Status.FAIL, "", Severity.LOW),
+                        CheckResult("b", Status.PASS, "", Severity.INFO),
+                    ],
+                )
+            ],
         )
         assert compute_layer_score(lr_critical) < compute_layer_score(lr_low)
 
@@ -93,9 +123,14 @@ class TestComputeOverallScore:
         layers = {
             "protocol": LayerResult(
                 layer="protocol",
-                tools=[ToolResult("t", [
-                    CheckResult("a", Status.FAIL, "bad", Severity.CRITICAL),
-                ])],
+                tools=[
+                    ToolResult(
+                        "t",
+                        [
+                            CheckResult("a", Status.FAIL, "bad", Severity.CRITICAL),
+                        ],
+                    )
+                ],
             ),
         }
         config = ScoringConfig(
@@ -110,9 +145,14 @@ class TestComputeOverallScore:
         layers = {
             "security": LayerResult(
                 layer="security",
-                tools=[ToolResult("t", [
-                    CheckResult("a", Status.FAIL, "bad", Severity.CRITICAL),
-                ])],
+                tools=[
+                    ToolResult(
+                        "t",
+                        [
+                            CheckResult("a", Status.FAIL, "bad", Severity.CRITICAL),
+                        ],
+                    )
+                ],
             ),
             "protocol": LayerResult(
                 layer="protocol",

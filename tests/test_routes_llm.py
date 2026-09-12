@@ -70,6 +70,7 @@ async def test_list_llm_configs_env_only(client, monkeypatch):
     llm_config_path = client.app.state.__dict__.get("llm_config_path")
     if llm_config_path:
         import pathlib
+
         p = pathlib.Path(llm_config_path)
         if p.exists():
             p.unlink()

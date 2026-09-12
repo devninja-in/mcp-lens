@@ -124,6 +124,7 @@ async def test_discover_oauth_metadata_openid(monkeypatch):
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     import httpx
+
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: mock_client)
 
     result = await discover_oauth_metadata("https://example.com/mcp")
@@ -151,6 +152,7 @@ async def test_discover_oauth_metadata_rfc8414_fallback(monkeypatch):
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     import httpx
+
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: mock_client)
 
     result = await discover_oauth_metadata("https://example.com")
@@ -173,6 +175,7 @@ async def test_discover_oauth_metadata_strips_path(monkeypatch):
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     import httpx
+
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: mock_client)
 
     result = await discover_oauth_metadata("https://example.com/mcp")
@@ -187,6 +190,7 @@ async def test_discover_oauth_metadata_all_fail(monkeypatch):
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     import httpx
+
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: mock_client)
 
     with pytest.raises(ValueError, match="No OAuth metadata found"):

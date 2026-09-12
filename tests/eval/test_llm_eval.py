@@ -144,6 +144,7 @@ class TestDescriptionClarity:
         class ErrorAdapter(MockAdapter):
             async def generate_answer(self, tool_result, user_prompt):
                 raise RuntimeError("API error")
+
         results = _run(_check_description_clarity(SAMPLE_TOOLS[:1], ErrorAdapter()))
         assert results[0].checks[0].status == Status.SKIP
         assert "skipped" in results[0].checks[0].message.lower()
@@ -381,9 +382,11 @@ class TestServerDescription:
                 return '{"rating": 9, "reason": "Clear"}'
 
         adapter = CapturingAdapter(rating=9, reason="Clear")
-        results = _run(_check_description_clarity(
-            SAMPLE_TOOLS[:1], adapter, server_description="Atlassian MCP server for Confluence and Jira"
-        ))
+        results = _run(
+            _check_description_clarity(
+                SAMPLE_TOOLS[:1], adapter, server_description="Atlassian MCP server for Confluence and Jira"
+            )
+        )
         assert len(results) == 1
         assert results[0].checks[0].status == Status.PASS
 
@@ -400,9 +403,9 @@ class TestServerDescription:
                 return "Search for users named alice"
 
         adapter = ContextCapturingAdapter()
-        results = _run(_check_tool_selection(
-            SAMPLE_TOOLS[:1], adapter, server_description="data platform for analytics"
-        ))
+        results = _run(
+            _check_tool_selection(SAMPLE_TOOLS[:1], adapter, server_description="data platform for analytics")
+        )
         assert len(results) == 1
         assert results[0].checks[0].status == Status.PASS
 
@@ -468,9 +471,15 @@ class TestSuggestImprovedDescription:
 
         tool = {"name": "search_users", "description": "Search for users"}
         adapter = SuggestionAdapter()
-        result = _run(_suggest_improved_description(
-            adapter, tool, "Find users named Alice", "other_tool", "search_users",
-        ))
+        result = _run(
+            _suggest_improved_description(
+                adapter,
+                tool,
+                "Find users named Alice",
+                "other_tool",
+                "search_users",
+            )
+        )
         assert result is not None
         assert "user" in result.lower()
 
@@ -481,9 +490,15 @@ class TestSuggestImprovedDescription:
 
         tool = {"name": "search_users", "description": "Search for users"}
         adapter = ErrorAdapter()
-        result = _run(_suggest_improved_description(
-            adapter, tool, "Find users", "other_tool", "search_users",
-        ))
+        result = _run(
+            _suggest_improved_description(
+                adapter,
+                tool,
+                "Find users",
+                "other_tool",
+                "search_users",
+            )
+        )
         assert result is None
 
     def test_includes_server_description_context(self):
@@ -495,10 +510,16 @@ class TestSuggestImprovedDescription:
 
         tool = {"name": "search_users", "description": "Search for users"}
         adapter = ContextAdapter()
-        result = _run(_suggest_improved_description(
-            adapter, tool, "Find users", "other_tool", "search_users",
-            server_description="analytics platform",
-        ))
+        result = _run(
+            _suggest_improved_description(
+                adapter,
+                tool,
+                "Find users",
+                "other_tool",
+                "search_users",
+                server_description="analytics platform",
+            )
+        )
         assert result == "Improved description"
 
 
@@ -586,6 +607,7 @@ class TestCoverageGaps:
 
     def test_tool_selection_exception_handler_auto_generated(self):
         """Test tool selection exception handler in auto-generated path."""
+
         class ErrorAdapter(MockAdapter):
             async def select_tool(self, tools, prompt):
                 raise RuntimeError("API error")
@@ -621,6 +643,7 @@ class TestCoverageGaps:
 
     def test_arg_generation_exception_handler(self):
         """Test arg generation exception handler."""
+
         class ErrorAdapter(MockAdapter):
             async def select_tool(self, tools, prompt):
                 raise RuntimeError("API error")
@@ -735,10 +758,7 @@ class TestCoverageGaps:
         adapter = PrereqToolBAdapter()
         results = _run(_check_tool_disambiguation(tools, adapter))
         warn_checks = [
-            c
-            for tr in results
-            for c in tr.checks
-            if c.status == Status.WARN and c.details.get("prerequisite")
+            c for tr in results for c in tr.checks if c.status == Status.WARN and c.details.get("prerequisite")
         ]
         assert len(warn_checks) >= 1
 
@@ -870,7 +890,7 @@ class TestCoverageGaps:
 
         adapter = PartialErrorAdapter()
 
-        with mock.patch('src.app.eval.llm_eval._check_description_clarity', side_effect=RuntimeError("Check crashed")):
+        with mock.patch("src.app.eval.llm_eval._check_description_clarity", side_effect=RuntimeError("Check crashed")):
             layer = _run(check_llm_all(SAMPLE_TOOLS, adapter))
             assert layer.layer == "llm"
 
@@ -901,6 +921,7 @@ class TestCoverageGaps:
 
     def test_arg_generation_type_mismatch(self):
         """Test arg generation type check fails."""
+
         class WrongTypeAdapter(MockAdapter):
             async def select_tool(self, tools, prompt):
                 return {
@@ -919,6 +940,7 @@ class TestCoverageGaps:
 
     def test_arg_generation_ground_truth_validation(self):
         """Test arg generation ground truth validation."""
+
         class ArgGenAdapter(MockAdapter):
             async def select_tool(self, tools, prompt):
                 return {
@@ -930,11 +952,13 @@ class TestCoverageGaps:
                 return "scenario"
 
         adapter = ArgGenAdapter()
-        gt = [{
-            "expected_tool_selection": ["search_users"],
-            "prompts": ["Find users named Alice"],
-            "expected_args": {"query": "alice", "limit": 10}
-        }]
+        gt = [
+            {
+                "expected_tool_selection": ["search_users"],
+                "prompts": ["Find users named Alice"],
+                "expected_args": {"query": "alice", "limit": 10},
+            }
+        ]
         results = _run(_check_arg_generation(SAMPLE_TOOLS[:1], adapter, ground_truth=gt))
         checks = results[0].checks
         gt_warns = [c for c in checks if "ground_truth" in c.check_id]
@@ -961,15 +985,22 @@ class TestCoverageGaps:
             ),
         ]
         tools = [
-            {"name": "searchCustomers", "description": "Search for customers by name or email address",
-             "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}}}},
-            {"name": "findCustomers", "description": "Find customers by name or email address",
-             "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}}}},
+            {
+                "name": "searchCustomers",
+                "description": "Search for customers by name or email address",
+                "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}}},
+            },
+            {
+                "name": "findCustomers",
+                "description": "Find customers by name or email address",
+                "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}}},
+            },
         ]
 
         class CorrectAdapter(MockAdapter):
             async def select_tool(self, tools, prompt):
                 return {"tool_name": "searchCustomers", "arguments": {}}
+
             async def generate_answer(self, tool_result, prompt):
                 return "Search for customers"
 
