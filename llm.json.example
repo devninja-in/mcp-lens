@@ -7,13 +7,18 @@
     "gemini-flash": {
       "provider": "vertexai",
       "model": "gemini-2.5-flash",
-      "project_env": "GCP_PROJECT",
-      "location_env": "GCP_LOCATION",
+      "_comment": "project and location are optional when using a service account — the SDK infers project from the credentials and defaults location to us-central1",
       "credentials_env": "GOOGLE_APPLICATION_CREDENTIALS"
     },
     "gemini-pro": {
       "provider": "vertexai",
       "model": "gemini-2.5-pro",
+      "credentials_env": "GOOGLE_APPLICATION_CREDENTIALS"
+    },
+    "gemini-flash-custom-project": {
+      "_comment": "Use project_env and location_env only if you need to override the service account defaults",
+      "provider": "vertexai",
+      "model": "gemini-2.5-flash",
       "project_env": "GCP_PROJECT",
       "location_env": "GCP_LOCATION",
       "credentials_env": "GOOGLE_APPLICATION_CREDENTIALS"

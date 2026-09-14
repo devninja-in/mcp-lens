@@ -67,7 +67,7 @@ def get_available_llm_configs() -> dict:
             result[name] = {
                 "provider": cfg.get("provider", ""),
                 "model": cfg.get("model", ""),
-                "has_credentials": bool(cfg.get("api_key") or cfg.get("project")),
+                "has_credentials": bool(cfg.get("api_key") or cfg.get("project") or cfg.get("credentials")),
             }
     return result
 

@@ -314,8 +314,7 @@ Create a `llm.json` file in the project root (`make setup` does this interactive
     "gemini-flash": {
       "provider": "vertexai",
       "model": "gemini-2.5-flash",
-      "project_env": "GCP_PROJECT",
-      "location_env": "GCP_LOCATION"
+      "credentials_env": "GOOGLE_APPLICATION_CREDENTIALS"
     },
     "claude": {
       "provider": "anthropic",
@@ -330,11 +329,12 @@ Then add the referenced secrets to `.env`:
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-...
-GCP_PROJECT=my-gcp-project
-GCP_LOCATION=us-central1
+GOOGLE_APPLICATION_CREDENTIALS=./my-service-account.json
 ```
 
-**`_env` suffix convention:** Keys ending in `_env` (e.g., `api_key_env`, `project_env`) reference environment variable names defined in `.env`, not raw values. This keeps secrets out of `llm.json`, which is safe to commit.
+**`_env` suffix convention:** Keys ending in `_env` (e.g., `api_key_env`, `credentials_env`) reference environment variable names defined in `.env`, not raw values. This keeps secrets out of `llm.json`, which is safe to commit.
+
+**Vertex AI note:** When using a service account JSON (`credentials_env`), `project_env` and `location_env` are optional — the SDK infers the project from the service account file and defaults location to `us-central1`. Only add them if you need to override these defaults.
 
 **How it works:**
 - `default` — The LLM config used when no specific config is requested

@@ -487,6 +487,7 @@ async def _check_arg_generation(
     adapter: Any,
     server_description: str = "",
     ground_truth: list[dict] | None = None,
+    selections_cache: dict[str, dict] | None = None,
 ) -> list[ToolResult]:
     logger.info("Running argument generation check")
     results = []
@@ -506,19 +507,23 @@ async def _check_arg_generation(
 
         try:
             gt_cases = _get_ground_truth_for_tool(name, ground_truth)
-            if gt_cases:
-                gt_tc = gt_cases[0]
-                scenario = gt_tc["prompts"][0]
-                scenario_source = "user_provided"
-                gt_expected_args = gt_tc.get("expected_args")
+            scenario_source = "ground_truth" if gt_cases else "generated"
+
+            cached = (selections_cache or {}).get(name)
+            if cached:
+                selected = cached["selected"]
+                args = cached["arguments"]
             else:
-                scenario = await _generate_scenario(adapter, tool, server_description)
-                scenario_source = "auto_generated"
-                gt_expected_args = None
-            enriched = _enrich_scenario(scenario, server_description)
-            selection = await adapter.select_tool(tools, enriched)
-            selected = selection.get("tool_name", "")
-            args = selection.get("arguments", {})
+                if gt_cases:
+                    gt_tc = gt_cases[0]
+                    scenario = gt_tc["prompts"][0]
+                else:
+                    scenario = await _generate_scenario(adapter, tool, server_description)
+                enriched = _enrich_scenario(scenario, server_description)
+                selection = await adapter.select_tool(tools, enriched)
+                selected = selection.get("tool_name", "")
+                args = selection.get("arguments", {})
+            gt_expected_args = gt_cases[0].get("expected_args") if gt_cases else None
 
             checks = []
 
@@ -658,7 +663,7 @@ def _check_type(value: Any, expected: str) -> bool:
     if expected == "string":
         return isinstance(value, str)
     if expected == "number":
-        return isinstance(value, (int, float))
+        return isinstance(value, int | float)
     if expected == "integer":
         return isinstance(value, int)
     if expected == "boolean":
@@ -916,6 +921,18 @@ async def _check_safety_resistance(
     return results
 
 
+def _build_selections_cache(tool_results: list[ToolResult]) -> dict[str, dict]:
+    cache: dict[str, dict] = {}
+    for tr in tool_results:
+        for check in tr.checks:
+            if check.check_id == "llm.tool_selection" and check.details:
+                selected = check.details.get("selected", "")
+                arguments = check.details.get("arguments", {})
+                if selected and tr.tool_name not in cache:
+                    cache[tr.tool_name] = {"selected": selected, "arguments": arguments}
+    return cache
+
+
 async def check_llm_all(
     tools: list[dict],
     adapter: Any,
@@ -927,17 +944,37 @@ async def check_llm_all(
         logger.info("Ground truth loaded: %d scenarios", len(ground_truth))
     all_tool_results: list[ToolResult] = []
 
-    check_fns = [
-        _check_description_clarity,
-        _check_tool_selection,
-        _check_arg_generation,
-        _check_tool_disambiguation,
-        _check_safety_resistance,
-    ]
-    for check_fn in check_fns:
+    for check_fn in [_check_description_clarity]:
         try:
-            results = await check_fn(tools, adapter, server_description, ground_truth=ground_truth)
-            all_tool_results.extend(results)
+            all_tool_results.extend(await check_fn(tools, adapter, server_description, ground_truth=ground_truth))
+        except Exception as e:
+            logger.error("LLM check %s crashed: %s", check_fn.__name__, e, exc_info=True)
+
+    selections_cache: dict[str, dict] = {}
+    try:
+        selection_results = await _check_tool_selection(tools, adapter, server_description, ground_truth=ground_truth)
+        all_tool_results.extend(selection_results)
+        selections_cache = _build_selections_cache(selection_results)
+        logger.info("Cached %d tool selections for arg generation reuse", len(selections_cache))
+    except Exception as e:
+        logger.error("LLM check _check_tool_selection crashed: %s", e, exc_info=True)
+
+    try:
+        all_tool_results.extend(
+            await _check_arg_generation(
+                tools,
+                adapter,
+                server_description,
+                ground_truth=ground_truth,
+                selections_cache=selections_cache,
+            )
+        )
+    except Exception as e:
+        logger.error("LLM check _check_arg_generation crashed: %s", e, exc_info=True)
+
+    for check_fn in [_check_tool_disambiguation, _check_safety_resistance]:
+        try:
+            all_tool_results.extend(await check_fn(tools, adapter, server_description, ground_truth=ground_truth))
         except Exception as e:
             logger.error("LLM check %s crashed: %s", check_fn.__name__, e, exc_info=True)
 
