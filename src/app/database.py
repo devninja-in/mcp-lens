@@ -1,8 +1,10 @@
 import json
 import logging
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 
+from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import Boolean, DateTime, String, Text, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -10,6 +12,26 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from .config import get_database_url
 
 logger = logging.getLogger(__name__)
+
+_fernet: Fernet | None = None
+_encryption_key = os.environ.get("MCP_LENS_ENCRYPTION_KEY")
+if _encryption_key:
+    _fernet = Fernet(_encryption_key.encode())
+
+
+def _encrypt(plaintext: str) -> str:
+    if _fernet is None:
+        return plaintext
+    return _fernet.encrypt(plaintext.encode()).decode()
+
+
+def _decrypt(ciphertext: str) -> str:
+    if _fernet is None:
+        return ciphertext
+    try:
+        return _fernet.decrypt(ciphertext.encode()).decode()
+    except InvalidToken:
+        return ciphertext
 
 
 class Base(DeclarativeBase):
@@ -94,7 +116,7 @@ async def get_secret(server_name: str, secret_type: str) -> dict | None:
         result = await session.get(McpSecret, (server_name, secret_type))
         if result is None:
             return None
-        data: dict = json.loads(result.secret_data)
+        data: dict = json.loads(_decrypt(result.secret_data))
         return data
 
 
@@ -102,15 +124,16 @@ async def set_secret(server_name: str, secret_type: str, data: dict) -> None:
     async with _get_session() as session, session.begin():
         existing = await session.get(McpSecret, (server_name, secret_type))
         now = datetime.now(UTC)
+        encrypted = _encrypt(json.dumps(data))
         if existing:
-            existing.secret_data = json.dumps(data)
+            existing.secret_data = encrypted
             existing.updated_at = now
         else:
             session.add(
                 McpSecret(
                     server_name=server_name,
                     secret_type=secret_type,
-                    secret_data=json.dumps(data),
+                    secret_data=encrypted,
                     updated_at=now,
                 )
             )

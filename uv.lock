@@ -1163,6 +1163,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
+    { name = "cryptography" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "python-dotenv" },
@@ -1208,6 +1209,7 @@ requires-dist = [
     { name = "anthropic", marker = "extra == 'eval-anthropic'", specifier = ">=0.25.0" },
     { name = "anthropic", extras = ["vertex"], marker = "extra == 'eval-anthropic-vertex'", specifier = ">=0.25.0" },
     { name = "asyncpg", marker = "extra == 'postgres'", specifier = ">=0.30.0" },
+    { name = "cryptography", specifier = ">=43.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "google-genai", marker = "extra == 'eval-vertexai'", specifier = ">=1.0.0" },
     { name = "httpx", specifier = ">=0.27.0" },

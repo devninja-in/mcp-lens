@@ -4,7 +4,7 @@ export
 BACKEND_PORT ?= 5002
 FRONTEND_PORT ?= 5173
 
-.PHONY: start stop restart start-backend start-frontend stop-backend stop-frontend test lint setup clean clean-all
+.PHONY: start stop restart start-backend start-frontend stop-backend stop-frontend test lint setup clean clean-all clear-credentials
 
 start: start-backend start-frontend
 
@@ -60,3 +60,8 @@ clean-all: clean
 	@rm -f mcp_secrets.db && echo "  removed mcp_secrets.db" || true
 	@rm -f .env && echo "  removed .env"
 	@echo "Full clean complete."
+
+clear-credentials:
+	@echo "Clearing all stored credentials from database..."
+	@python3 -c "import sqlite3; conn = sqlite3.connect('mcp_secrets.db'); conn.execute('DELETE FROM mcp_secrets'); conn.commit(); conn.close()"
+	@echo "All credentials cleared."

@@ -309,7 +309,7 @@ Pass a scoring config JSON to the CLI:
 ```
 
 ```bash
-mcp-eval report tools.yaml --config scoring.json
+mcp-lens report tools.yaml --config scoring.json
 ```
 
 ---

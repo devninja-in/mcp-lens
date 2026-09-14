@@ -30,6 +30,7 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0",
     "aiosqlite>=0.20.0",
     "python-multipart>=0.0.32",
+    "cryptography>=43.0",
 ]
 
 [project.urls]
@@ -40,7 +41,7 @@ Issues = "https://github.com/mcp-lens/mcp-lens/issues"
 Changelog = "https://github.com/mcp-lens/mcp-lens/blob/main/CHANGELOG.md"
 
 [project.scripts]
-mcp-eval = "src.app.eval.cli:main"
+mcp-lens = "src.app.eval.cli:main"
 
 [project.optional-dependencies]
 eval-anthropic = ["anthropic>=0.25.0"]
