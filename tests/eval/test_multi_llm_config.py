@@ -9,7 +9,7 @@ from src.app.eval.llm_config import (
     get_adapter_for_config,
     get_available_llm_configs,
     get_default_llm_name,
-    load_multi_llm_configs,
+    load_llm_configs,
 )
 from src.app.eval.model_adapter import MockAdapter
 
@@ -51,10 +51,10 @@ class TestResolveConfig:
         assert resolved["provider"] == "vertexai"
 
 
-class TestLoadMultiLlmConfigs:
+class TestLoadLlmConfigs:
     def test_returns_none_when_file_missing(self, tmp_path, monkeypatch):
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", tmp_path / "nonexistent.json")
-        result = load_multi_llm_configs()
+        result = load_llm_configs()
         assert result is None
 
     def test_loads_and_resolves_configs(self, tmp_path, monkeypatch):
@@ -72,7 +72,7 @@ class TestLoadMultiLlmConfigs:
             )
         )
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", config_file)
-        result = load_multi_llm_configs()
+        result = load_llm_configs()
         assert result is not None
         assert "gpt4o" in result
         assert result["gpt4o"]["api_key"] == "sk-test"
@@ -84,14 +84,14 @@ class TestLoadMultiLlmConfigs:
         config_file = tmp_path / "llm.json"
         config_file.write_text("not valid json {{{")
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", config_file)
-        result = load_multi_llm_configs()
+        result = load_llm_configs()
         assert result is None
 
     def test_empty_configs_section(self, tmp_path, monkeypatch):
         config_file = tmp_path / "llm.json"
         config_file.write_text(json.dumps({"configs": {}}))
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", config_file)
-        result = load_multi_llm_configs()
+        result = load_llm_configs()
         assert result == {}
 
 
@@ -114,7 +114,7 @@ class TestGetDefaultLlmName:
 
 
 class TestGetAvailableLlmConfigs:
-    def test_merges_llm_json_and_env(self, tmp_path, monkeypatch):
+    def test_returns_configs_from_llm_json(self, tmp_path, monkeypatch):
         config_file = tmp_path / "llm.json"
         config_file.write_text(
             json.dumps(
@@ -124,18 +124,9 @@ class TestGetAvailableLlmConfigs:
             )
         )
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", config_file)
-        monkeypatch.setenv("EVAL_LLM_PROVIDER", "anthropic")
-        monkeypatch.setenv("EVAL_LLM_MODEL", "claude-sonnet-4-20250514")
-        monkeypatch.delenv("EVAL_LLM_API_KEY", raising=False)
-        monkeypatch.delenv("EVAL_LLM_PROJECT", raising=False)
-        monkeypatch.delenv("EVAL_LLM_LOCATION", raising=False)
-        monkeypatch.delenv("EVAL_LLM_BASE_URL", raising=False)
 
         result = get_available_llm_configs()
         assert "mock_llm" in result
-        assert "env" in result
-        assert result["env"]["provider"] == "anthropic"
-        assert result["env"]["source"] == "environment"
 
     def test_never_exposes_actual_keys(self, tmp_path, monkeypatch):
         monkeypatch.setenv("SECRET_KEY", "sk-very-secret")
@@ -155,37 +146,14 @@ class TestGetAvailableLlmConfigs:
         assert "sk-very-secret" not in str(result["test"])
         assert result["test"]["has_credentials"] is True
 
-    def test_env_only_when_no_llm_json(self, tmp_path, monkeypatch):
+    def test_returns_empty_when_no_llm_json(self, tmp_path, monkeypatch):
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", tmp_path / "nonexistent.json")
-        monkeypatch.setenv("EVAL_LLM_PROVIDER", "mock")
-        monkeypatch.delenv("EVAL_LLM_MODEL", raising=False)
-        monkeypatch.delenv("EVAL_LLM_API_KEY", raising=False)
-        monkeypatch.delenv("EVAL_LLM_PROJECT", raising=False)
-        monkeypatch.delenv("EVAL_LLM_LOCATION", raising=False)
-        monkeypatch.delenv("EVAL_LLM_BASE_URL", raising=False)
 
         result = get_available_llm_configs()
-        assert "env" in result
-        assert len(result) == 1
+        assert result == {}
 
 
 class TestGetAdapterForConfig:
-    def test_env_config_delegates_to_get_eval_adapter(self, monkeypatch):
-        monkeypatch.setenv("EVAL_LLM_PROVIDER", "mock")
-        monkeypatch.delenv("EVAL_LLM_MODEL", raising=False)
-        monkeypatch.delenv("EVAL_LLM_API_KEY", raising=False)
-        monkeypatch.delenv("EVAL_LLM_PROJECT", raising=False)
-        monkeypatch.delenv("EVAL_LLM_LOCATION", raising=False)
-        monkeypatch.delenv("EVAL_LLM_BASE_URL", raising=False)
-
-        adapter = get_adapter_for_config("env")
-        assert isinstance(adapter, MockAdapter)
-
-    def test_env_config_raises_when_not_configured(self, monkeypatch):
-        monkeypatch.delenv("EVAL_LLM_PROVIDER", raising=False)
-        with pytest.raises(ValueError, match="No LLM configured"):
-            get_adapter_for_config("env")
-
     def test_named_config_creates_adapter(self, tmp_path, monkeypatch):
         config_file = tmp_path / "llm.json"
         config_file.write_text(
@@ -212,41 +180,3 @@ class TestGetAdapterForConfig:
         monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", tmp_path / "nonexistent.json")
         with pytest.raises(ValueError, match="Unknown LLM config"):
             get_adapter_for_config("some_config")
-
-
-class TestBackwardCompatibility:
-    def test_env_vars_work_without_llm_json(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", tmp_path / "nonexistent.json")
-        monkeypatch.setenv("EVAL_LLM_PROVIDER", "mock")
-        monkeypatch.delenv("EVAL_LLM_MODEL", raising=False)
-        monkeypatch.delenv("EVAL_LLM_API_KEY", raising=False)
-        monkeypatch.delenv("EVAL_LLM_PROJECT", raising=False)
-        monkeypatch.delenv("EVAL_LLM_LOCATION", raising=False)
-        monkeypatch.delenv("EVAL_LLM_BASE_URL", raising=False)
-
-        configs = get_available_llm_configs()
-        assert "env" in configs
-
-        adapter = get_adapter_for_config("env")
-        assert isinstance(adapter, MockAdapter)
-
-    def test_llm_json_does_not_shadow_env_adapter(self, tmp_path, monkeypatch):
-        config_file = tmp_path / "llm.json"
-        config_file.write_text(
-            json.dumps(
-                {
-                    "configs": {"named": {"provider": "mock", "model": "named-model"}},
-                }
-            )
-        )
-        monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", config_file)
-        monkeypatch.setenv("EVAL_LLM_PROVIDER", "mock")
-        monkeypatch.delenv("EVAL_LLM_MODEL", raising=False)
-        monkeypatch.delenv("EVAL_LLM_API_KEY", raising=False)
-        monkeypatch.delenv("EVAL_LLM_PROJECT", raising=False)
-        monkeypatch.delenv("EVAL_LLM_LOCATION", raising=False)
-        monkeypatch.delenv("EVAL_LLM_BASE_URL", raising=False)
-
-        configs = get_available_llm_configs()
-        assert "named" in configs
-        assert "env" in configs

@@ -675,8 +675,6 @@ async def test_evaluate_llm_no_config(client, monkeypatch):
 
     save_tools("test-server", SAMPLE_TOOLS)
 
-    # Mock load_llm_config to return None
-    monkeypatch.setattr("src.app.routes.tools.load_llm_config", lambda: None)
     monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: None)
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
@@ -691,26 +689,18 @@ async def test_evaluate_llm_with_mock_adapter(client, monkeypatch):
 
     save_tools("test-server", SAMPLE_TOOLS)
 
-    # Mock LLM config
+    monkeypatch.setattr("src.app.routes.tools.get_adapter_for_config", lambda name: MockAdapter())
     monkeypatch.setattr(
-        "src.app.routes.tools.load_llm_config",
-        lambda: {
-            "provider": "mock",
-            "model": None,
-            "api_key": None,
-            "project": None,
-            "location": None,
-            "base_url": None,
-        },
+        "src.app.routes.tools.get_available_llm_configs",
+        lambda: {"mock-config": {"provider": "mock", "model": "test"}},
     )
-    monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: MockAdapter())
+    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: "mock-config")
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
     assert resp.status_code == 200
     data = resp.json()
-    assert "layer" in data
-    assert "overall_score" in data
-    assert "metadata" in data
+    assert "per_llm" in data
+    assert "mock-config" in data["per_llm"]
 
 
 @pytest.mark.asyncio
@@ -735,24 +725,17 @@ async def test_evaluate_llm_with_ground_truth(client, monkeypatch):
         files={"file": ("test.yaml", file, "application/x-yaml")},
     )
 
-    # Mock LLM config
+    monkeypatch.setattr("src.app.routes.tools.get_adapter_for_config", lambda name: MockAdapter())
     monkeypatch.setattr(
-        "src.app.routes.tools.load_llm_config",
-        lambda: {
-            "provider": "mock",
-            "model": None,
-            "api_key": None,
-            "project": None,
-            "location": None,
-            "base_url": None,
-        },
+        "src.app.routes.tools.get_available_llm_configs",
+        lambda: {"mock-config": {"provider": "mock", "model": "test"}},
     )
-    monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: MockAdapter())
+    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: "mock-config")
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["metadata"]["ground_truth_loaded"] is True
+    assert "per_llm" in data
 
 
 @pytest.mark.asyncio
@@ -839,26 +822,21 @@ async def test_evaluate_llm_import_error(client, monkeypatch):
 
     save_tools("test-server", SAMPLE_TOOLS)
 
-    # Mock to raise ImportError
-    def mock_get_eval_adapter():
+    def mock_get_adapter_for_config(name):
         raise ImportError("anthropic package not installed")
 
+    monkeypatch.setattr("src.app.routes.tools.get_adapter_for_config", mock_get_adapter_for_config)
     monkeypatch.setattr(
-        "src.app.routes.tools.load_llm_config",
-        lambda: {
-            "provider": "anthropic",
-            "model": "claude-3-5-sonnet-20241022",
-            "api_key": None,
-            "project": None,
-            "location": None,
-            "base_url": None,
-        },
+        "src.app.routes.tools.get_available_llm_configs",
+        lambda: {"anthropic-config": {"provider": "anthropic"}},
     )
-    monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", mock_get_eval_adapter)
-    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: None)
+    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: "anthropic-config")
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
-    assert resp.status_code == 400
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "per_llm" in data
+    assert "error" in data["per_llm"]["anthropic-config"]
 
 
 @pytest.mark.asyncio
@@ -868,29 +846,21 @@ async def test_evaluate_llm_execution_error(client, monkeypatch):
 
     save_tools("test-server", SAMPLE_TOOLS)
 
-    # Mock adapter that raises an error during evaluation
     class FailingAdapter(MockAdapter):
         async def select_tool(self, tools, user_prompt):
             raise RuntimeError("LLM API error")
 
+    monkeypatch.setattr("src.app.routes.tools.get_adapter_for_config", lambda name: FailingAdapter())
     monkeypatch.setattr(
-        "src.app.routes.tools.load_llm_config",
-        lambda: {
-            "provider": "mock",
-            "model": None,
-            "api_key": None,
-            "project": None,
-            "location": None,
-            "base_url": None,
-        },
+        "src.app.routes.tools.get_available_llm_configs",
+        lambda: {"mock-config": {"provider": "mock"}},
     )
-    monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: FailingAdapter())
+    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: "mock-config")
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
     assert resp.status_code == 200
     data = resp.json()
-    # The LLM layer handles errors gracefully, so we should get a result
-    assert "layer" in data or "metadata" in data
+    assert "per_llm" in data
 
 
 @pytest.mark.asyncio
@@ -997,48 +967,40 @@ async def test_evaluate_llm_with_server_description(client, monkeypatch):
         },
     )
 
+    monkeypatch.setattr("src.app.routes.tools.get_adapter_for_config", lambda name: MockAdapter())
     monkeypatch.setattr(
-        "src.app.routes.tools.load_llm_config",
-        lambda: {
-            "provider": "mock",
-            "model": None,
-            "api_key": None,
-            "project": None,
-            "location": None,
-            "base_url": None,
-        },
+        "src.app.routes.tools.get_available_llm_configs",
+        lambda: {"mock-config": {"provider": "mock", "model": "test"}},
     )
-    monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: MockAdapter())
+    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: "mock-config")
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
     assert resp.status_code == 200
     data = resp.json()
-    assert "layer" in data
+    assert "per_llm" in data
 
 
 @pytest.mark.asyncio
-async def test_evaluate_llm_adapter_returns_none(client, monkeypatch):
+async def test_evaluate_llm_adapter_returns_error(client, monkeypatch):
     from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
 
+    def mock_get_adapter_for_config(name):
+        raise ValueError("Unknown LLM config: 'bad'")
+
+    monkeypatch.setattr("src.app.routes.tools.get_adapter_for_config", mock_get_adapter_for_config)
     monkeypatch.setattr(
-        "src.app.routes.tools.load_llm_config",
-        lambda: {
-            "provider": "mock",
-            "model": None,
-            "api_key": None,
-            "project": None,
-            "location": None,
-            "base_url": None,
-        },
+        "src.app.routes.tools.get_available_llm_configs",
+        lambda: {"bad": {"provider": "unknown"}},
     )
-    monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: None)
-    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: None)
+    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: "bad")
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
-    assert resp.status_code == 500
-    assert "Failed to create LLM adapter" in resp.json()["detail"]
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "per_llm" in data
+    assert "error" in data["per_llm"]["bad"]
 
 
 @pytest.mark.asyncio
@@ -1060,53 +1022,39 @@ async def test_evaluate_llm_single_with_overlapping_tools(client, monkeypatch):
     ]
     save_tools("test-server", overlapping_tools)
 
+    monkeypatch.setattr("src.app.routes.tools.get_adapter_for_config", lambda name: MockAdapter())
     monkeypatch.setattr(
-        "src.app.routes.tools.load_llm_config",
-        lambda: {
-            "provider": "mock",
-            "model": None,
-            "api_key": None,
-            "project": None,
-            "location": None,
-            "base_url": None,
-        },
+        "src.app.routes.tools.get_available_llm_configs",
+        lambda: {"mock-config": {"provider": "mock", "model": "test"}},
     )
-    monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: MockAdapter())
-    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: None)
+    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: "mock-config")
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
     assert resp.status_code == 200
     data = resp.json()
-    assert "layer" in data
+    assert "per_llm" in data
 
 
 @pytest.mark.asyncio
 async def test_evaluate_llm_single_exception_handler(client, monkeypatch):
+    from src.app.eval.model_adapter import MockAdapter
     from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
 
+    monkeypatch.setattr("src.app.routes.tools.get_adapter_for_config", lambda name: MockAdapter())
     monkeypatch.setattr(
-        "src.app.routes.tools.load_llm_config",
-        lambda: {
-            "provider": "mock",
-            "model": None,
-            "api_key": None,
-            "project": None,
-            "location": None,
-            "base_url": None,
-        },
+        "src.app.routes.tools.get_available_llm_configs",
+        lambda: {"mock-config": {"provider": "mock"}},
     )
-    monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: "not_an_adapter")
-    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: None)
+    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: "mock-config")
     monkeypatch.setattr("src.app.routes.tools.check_llm_all", _raise_runtime_error)
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
     assert resp.status_code == 200
     data = resp.json()
-    assert "error" in data
-    assert "metadata" in data
-    assert "llm_error" in data["metadata"]
+    assert "per_llm" in data
+    assert "error" in data["per_llm"]["mock-config"]
 
 
 @pytest.mark.asyncio
@@ -1169,31 +1117,26 @@ async def _raise_runtime_error(*args, **kwargs):
 
 @pytest.mark.asyncio
 async def test_evaluate_llm_single_http_exception_reraise(client, monkeypatch):
-    from fastapi import HTTPException
-
+    from src.app.eval.model_adapter import MockAdapter
     from src.app.tools_store import save_tools
 
     save_tools("test-server", SAMPLE_TOOLS)
 
+    monkeypatch.setattr("src.app.routes.tools.get_adapter_for_config", lambda name: MockAdapter())
     monkeypatch.setattr(
-        "src.app.routes.tools.load_llm_config",
-        lambda: {
-            "provider": "mock",
-            "model": None,
-            "api_key": None,
-            "project": None,
-            "location": None,
-            "base_url": None,
-        },
+        "src.app.routes.tools.get_available_llm_configs",
+        lambda: {"mock-config": {"provider": "mock"}},
     )
-    monkeypatch.setattr("src.app.routes.tools.get_eval_adapter", lambda: "dummy")
-    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: None)
+    monkeypatch.setattr("src.app.routes.tools.get_default_llm_name", lambda: "mock-config")
 
     async def raise_http(*args, **kwargs):
+        from fastapi import HTTPException
+
         raise HTTPException(status_code=503, detail="Service Unavailable")
 
     monkeypatch.setattr("src.app.routes.tools.check_llm_all", raise_http)
 
     resp = client.get("/api/servers/test-server/evaluate/llm")
-    assert resp.status_code == 503
-    assert "Service Unavailable" in resp.json()["detail"]
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "per_llm" in data

@@ -19,8 +19,7 @@ from ..eval.llm_config import (
     get_adapter_for_config,
     get_available_llm_configs,
     get_default_llm_name,
-    get_eval_adapter,
-    load_llm_config,
+    load_llm_configs,
 )
 from ..eval.llm_eval import check_llm_all
 from ..eval.models import EvalReport
@@ -155,8 +154,8 @@ async def evaluate_full(name: str) -> dict:
         logger.info("Detected %d tool overlaps for '%s'", len(overlaps), name)
         layers["quality"].catalog_checks.extend(overlaps)
 
-    llm_config = load_llm_config()
-    llm_meta: dict = {"llm_configured": llm_config is not None}
+    llm_configs = load_llm_configs()
+    llm_meta: dict = {"llm_configured": llm_configs is not None}
 
     report = EvalReport(
         timestamp=datetime.now(UTC).isoformat(),
@@ -320,80 +319,12 @@ async def evaluate_llm(name: str, llms: str | None = None) -> dict:
             llm_names = [default_name]
 
     if not llm_names:
-        llm_config = load_llm_config()
-        if not llm_config:
-            raise HTTPException(
-                status_code=404,
-                detail="LLM evaluation not configured. Set EVAL_LLM_PROVIDER in .env or create llm.json.",
-            )
-
-        logger.info(
-            "Starting LLM evaluation for '%s' (%d tools) with provider=%s model=%s",
-            name,
-            len(tools),
-            llm_config["provider"],
-            llm_config.get("model") or "default",
+        raise HTTPException(
+            status_code=404,
+            detail="LLM evaluation not configured. Create llm.json with at least one config. See llm.json.example.",
         )
-        try:
-            adapter = get_eval_adapter()
-            if not adapter:
-                raise HTTPException(status_code=500, detail="Failed to create LLM adapter")
-        except ImportError as e:
-            logger.error("Missing LLM dependency: %s", e)
-            raise HTTPException(status_code=400, detail=str(e)) from e
 
-        try:
-            llm_layer = await check_llm_all(tools, adapter, server_description, ground_truth=ground_truth_scenarios)
-            layers = {
-                "protocol": check_protocol_all(tools),
-                "quality": check_quality_all(tools),
-                "security": check_security_all(tools),
-                "llm": llm_layer,
-            }
-            overlaps = detect_overlaps(tools)
-            if overlaps:
-                layers["quality"].catalog_checks.extend(overlaps)
-
-            report = EvalReport(
-                timestamp=datetime.now(UTC).isoformat(),
-                server_name=name,
-                layers=layers,
-            )
-            report = apply_scoring(report)
-            logger.info(
-                "LLM evaluation complete for '%s': score=%.1f gate=%s",
-                name,
-                report.overall_score,
-                report.gate_passed,
-            )
-
-            eval_result = {
-                "layer": llm_layer.to_dict(),
-                "overall_score": report.overall_score,
-                "gate_passed": report.gate_passed,
-                "metadata": {
-                    "llm_provider": llm_config["provider"],
-                    "llm_model": llm_config.get("model") or "default",
-                    "ground_truth_loaded": bool(ground_truth_scenarios),
-                },
-            }
-            full_report = report.to_dict()
-            await save_eval_report(name, full_report, has_llm=True)
-            return eval_result
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error("LLM evaluation failed for '%s': %s", name, e, exc_info=True)
-            return {
-                "error": str(e),
-                "metadata": {
-                    "llm_provider": llm_config["provider"],
-                    "llm_model": llm_config.get("model") or "default",
-                    "llm_error": str(e),
-                },
-            }
-
-    logger.info("Multi-LLM evaluation for '%s' with configs: %s", name, llm_names)
+    logger.info("LLM evaluation for '%s' with configs: %s", name, llm_names)
     per_llm: dict[str, dict] = {}
     primary_layer = None
     primary_meta: dict = {}

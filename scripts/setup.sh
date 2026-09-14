@@ -120,9 +120,33 @@ ensure_env_file() {
 
 # --- LLM configuration ---
 
+LLM_JSON="$ROOT_DIR/llm.json"
+
+write_llm_json() {
+    local config_name="$1" provider="$2" model="$3"
+    shift 3
+    local extra_fields=""
+    while [ $# -gt 0 ]; do
+        extra_fields="${extra_fields}, \"$1\": \"$2\""
+        shift 2
+    done
+    cat > "$LLM_JSON" <<LLMEOF
+{
+  "default": "${config_name}",
+  "configs": {
+    "${config_name}": {
+      "provider": "${provider}",
+      "model": "${model}"${extra_fields}
+    }
+  }
+}
+LLMEOF
+}
+
 configure_llm() {
     header "LLM Evaluation Setup"
     echo "  Choose an LLM provider for evaluation checks."
+    echo "  Configuration is saved to llm.json; secrets go in .env."
     echo "  This is optional — skip to use static analysis only."
     echo ""
     echo "  1) openai"
@@ -138,92 +162,91 @@ configure_llm() {
 
     case "$provider_choice" in
         1)
-            set_env_var "EVAL_LLM_PROVIDER" "openai"
             ok "Provider: openai"
 
             local model
             prompt_value "Model" "gpt-4o" model
-            set_env_var "EVAL_LLM_MODEL" "$model"
 
             local api_key
             prompt_secret "API key (input hidden)" api_key
             if [ -n "$api_key" ]; then
-                set_env_var "EVAL_LLM_API_KEY" "$api_key"
-                ok "API key saved"
+                set_env_var "OPENAI_API_KEY" "$api_key"
+                ok "API key saved to .env"
             fi
 
-            local base_url
+            local base_url extra_args
             prompt_value "Base URL (for Azure/Ollama/vLLM, or leave empty)" "" base_url
+            extra_args="api_key_env OPENAI_API_KEY"
             if [ -n "$base_url" ]; then
-                set_env_var "EVAL_LLM_BASE_URL" "$base_url"
+                extra_args="$extra_args base_url $base_url"
             fi
 
+            write_llm_json "openai" "openai" "$model" $extra_args
             install_llm_extra "openai"
             ;;
         2)
-            set_env_var "EVAL_LLM_PROVIDER" "anthropic"
             ok "Provider: anthropic"
 
             local model
             prompt_value "Model" "claude-sonnet-4-20250514" model
-            set_env_var "EVAL_LLM_MODEL" "$model"
 
             local api_key
             prompt_secret "API key (input hidden)" api_key
             if [ -n "$api_key" ]; then
-                set_env_var "EVAL_LLM_API_KEY" "$api_key"
-                ok "API key saved"
+                set_env_var "ANTHROPIC_API_KEY" "$api_key"
+                ok "API key saved to .env"
             fi
 
+            write_llm_json "anthropic" "anthropic" "$model" api_key_env ANTHROPIC_API_KEY
             install_llm_extra "anthropic"
             ;;
         3)
-            set_env_var "EVAL_LLM_PROVIDER" "vertexai"
             ok "Provider: vertexai (Gemini)"
 
             local model
             prompt_value "Model" "gemini-2.5-flash" model
-            set_env_var "EVAL_LLM_MODEL" "$model"
 
             local project
             prompt_value "GCP project ID" "" project
             if [ -n "$project" ]; then
-                set_env_var "EVAL_LLM_PROJECT" "$project"
+                set_env_var "GCP_PROJECT" "$project"
             fi
 
             local location
             prompt_value "GCP region" "us-central1" location
-            set_env_var "EVAL_LLM_LOCATION" "$location"
+            set_env_var "GCP_LOCATION" "$location"
 
             local api_key
             echo "  API key (leave empty to use Application Default Credentials):"
             prompt_secret "  API key (input hidden, press Enter to skip)" api_key
+
+            local extra_args="project_env GCP_PROJECT location_env GCP_LOCATION"
             if [ -n "$api_key" ]; then
-                set_env_var "EVAL_LLM_API_KEY" "$api_key"
-                ok "API key saved"
+                set_env_var "GOOGLE_API_KEY" "$api_key"
+                extra_args="$extra_args api_key_env GOOGLE_API_KEY"
+                ok "API key saved to .env"
             else
                 ok "Using Application Default Credentials"
             fi
 
+            write_llm_json "gemini" "vertexai" "$model" $extra_args
             install_llm_extra "vertexai"
             ;;
         4)
-            set_env_var "EVAL_LLM_PROVIDER" "anthropic-vertex"
             ok "Provider: anthropic-vertex (Claude on VertexAI)"
 
             local model
             prompt_value "Model" "claude-sonnet-4-20250514" model
-            set_env_var "EVAL_LLM_MODEL" "$model"
 
             local project
             prompt_value "GCP project ID" "" project
             if [ -n "$project" ]; then
-                set_env_var "EVAL_LLM_PROJECT" "$project"
+                set_env_var "GCP_PROJECT" "$project"
             fi
 
             local location
             prompt_value "GCP region" "us-east5" location
-            set_env_var "EVAL_LLM_LOCATION" "$location"
+            set_env_var "GCP_LOCATION" "$location"
 
             local creds
             prompt_value "Service account JSON path (or leave empty for ADC)" "" creds
@@ -231,12 +254,17 @@ configure_llm() {
                 set_env_var "GOOGLE_APPLICATION_CREDENTIALS" "$creds"
             fi
 
+            write_llm_json "claude-vertex" "anthropic-vertex" "$model" project_env GCP_PROJECT location_env GCP_LOCATION
             install_llm_extra "anthropic-vertex"
             ;;
         *)
             ok "Skipping LLM configuration (static analysis only)"
             ;;
     esac
+
+    if [ -f "$LLM_JSON" ]; then
+        ok "LLM config saved to llm.json"
+    fi
 }
 
 # --- full configuration ---

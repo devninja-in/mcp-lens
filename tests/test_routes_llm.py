@@ -1,3 +1,5 @@
+import json
+
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
@@ -17,9 +19,7 @@ async def client(tmp_path, monkeypatch):
     monkeypatch.setattr(db_module, "_migrate_tokens_json", _noop)
     monkeypatch.setattr(db_module, "_migrate_mcp_json", _noop)
 
-    # Mock LLM config path
-    llm_config_path = tmp_path / "llm.json"
-    monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", llm_config_path)
+    monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", tmp_path / "llm.json")
 
     db_module._engine = None
     db_module._session_factory = None
@@ -32,8 +32,6 @@ async def client(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_list_llm_configs_with_file(client, tmp_path, monkeypatch):
-    import json
-
     llm_config_path = tmp_path / "llm.json"
     configs = {
         "configs": {
@@ -61,22 +59,11 @@ async def test_list_llm_configs_with_file(client, tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_list_llm_configs_env_only(client, monkeypatch):
-
-    # Set environment variable for LLM provider
-    monkeypatch.setenv("EVAL_LLM_PROVIDER", "mock")
-
-    # Ensure no llm.json file exists
-    llm_config_path = client.app.state.__dict__.get("llm_config_path")
-    if llm_config_path:
-        import pathlib
-
-        p = pathlib.Path(llm_config_path)
-        if p.exists():
-            p.unlink()
+async def test_list_llm_configs_empty_when_no_file(client, tmp_path, monkeypatch):
+    monkeypatch.setattr("src.app.eval.llm_config.LLM_CONFIG_PATH", tmp_path / "nonexistent.json")
 
     resp = client.get("/api/llm-configs")
     assert resp.status_code == 200
     data = resp.json()
     assert "configs" in data
-    assert "default" in data
+    assert data["configs"] == {}

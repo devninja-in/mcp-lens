@@ -82,7 +82,7 @@ uv run mcp-lens validate tools.yaml
 # Full report (JSON or text)
 uv run mcp-lens report tools.yaml --format json --output report.json
 
-# With LLM-assisted evaluation (requires EVAL_LLM_PROVIDER in .env)
+# With LLM-assisted evaluation (requires llm.json)
 uv run mcp-lens validate tools.yaml --llm
 uv run mcp-lens report tools.yaml --llm
 
@@ -127,10 +127,7 @@ FRONTEND_PORT=5173
 # OAuth token persistence (default: false — tokens deleted after tools fetch)
 # PERSIST_OAUTH_TOKENS=true
 
-# LLM evaluation — see "LLM-Assisted Evaluation" section below
-# EVAL_LLM_PROVIDER=openai
-# EVAL_LLM_MODEL=gpt-4o
-# EVAL_LLM_API_KEY=sk-...
+# LLM evaluation — configure in llm.json (see "LLM-Assisted Evaluation" section below)
 ```
 
 ### Authentication Modes
@@ -304,45 +301,11 @@ The JSON and PDF buttons in the header export both tools and evaluation data in 
 
 ## LLM-Assisted Evaluation
 
-When `EVAL_LLM_PROVIDER` is set in `.env`, MCP Lens runs five additional checks that probe tool definitions from an AI agent's perspective. No benchmark YAML or test fixtures required — scenarios are auto-generated from tool metadata.
+When `llm.json` is configured, MCP Lens runs five additional checks that probe tool definitions from an AI agent's perspective. No benchmark YAML or test fixtures required — scenarios are auto-generated from tool metadata.
 
 ### Configuration
 
-Add to your `.env`:
-
-```bash
-# Required — choose one: openai, anthropic, vertexai, anthropic-vertex
-EVAL_LLM_PROVIDER=openai
-EVAL_LLM_MODEL=gpt-4o
-EVAL_LLM_API_KEY=sk-...
-
-# Anthropic direct API
-# EVAL_LLM_PROVIDER=anthropic
-# EVAL_LLM_MODEL=claude-sonnet-4-20250514
-# EVAL_LLM_API_KEY=sk-ant-...
-
-# VertexAI with Gemini (uses ADC or API key)
-# EVAL_LLM_PROVIDER=vertexai
-# EVAL_LLM_MODEL=gemini-2.5-flash
-# EVAL_LLM_PROJECT=my-gcp-project
-# EVAL_LLM_LOCATION=us-central1
-
-# Claude on VertexAI (uses ADC / service account)
-# EVAL_LLM_PROVIDER=anthropic-vertex
-# EVAL_LLM_MODEL=claude-sonnet-4-20250514
-# EVAL_LLM_PROJECT=my-gcp-project
-# EVAL_LLM_LOCATION=us-east5
-# GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-
-# OpenAI-compatible endpoints (Azure, Ollama, vLLM)
-# EVAL_LLM_BASE_URL=https://my-proxy.example.com/v1
-```
-
-When not configured, the LLM layer is skipped entirely — the app works exactly as before with three static layers.
-
-### Multi-LLM Configuration
-
-For evaluating tools across multiple LLMs simultaneously, create a `llm.json` file in the project root (see `llm.json.example` for a complete template):
+Create a `llm.json` file in the project root (`make setup` does this interactively, or copy `llm.json.example`):
 
 ```json
 {
@@ -351,8 +314,8 @@ For evaluating tools across multiple LLMs simultaneously, create a `llm.json` fi
     "gemini-flash": {
       "provider": "vertexai",
       "model": "gemini-2.5-flash",
-      "project_env": "EVAL_LLM_PROJECT",
-      "location_env": "EVAL_LLM_LOCATION"
+      "project_env": "GCP_PROJECT",
+      "location_env": "GCP_LOCATION"
     },
     "claude": {
       "provider": "anthropic",
@@ -363,16 +326,25 @@ For evaluating tools across multiple LLMs simultaneously, create a `llm.json` fi
 }
 ```
 
-**`_env` suffix convention:** Keys ending in `_env` (e.g., `api_key_env`, `project_env`) reference environment variable names defined in `.env`, not raw values. This keeps secrets out of `llm.json`.
+Then add the referenced secrets to `.env`:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...
+GCP_PROJECT=my-gcp-project
+GCP_LOCATION=us-central1
+```
+
+**`_env` suffix convention:** Keys ending in `_env` (e.g., `api_key_env`, `project_env`) reference environment variable names defined in `.env`, not raw values. This keeps secrets out of `llm.json`, which is safe to commit.
 
 **How it works:**
-- `default` — The LLM config used for single-model evaluation
+- `default` — The LLM config used when no specific config is requested
 - `configs` — A map of named configurations, each specifying a `provider`, `model`, and provider-specific auth keys
 - When `llm.json` contains 2+ configs, the UI shows an **LLM selector** dropdown in the evaluation panel
-- The multi-LLM evaluation endpoint runs all selected configs in parallel and returns comparative results
 - Available configs are listed via `GET /api/llm-configs`
 
-Supported providers in `llm.json`: `openai`, `anthropic`, `vertexai`, `anthropic-vertex`. See `llm.json.example` for examples of all providers.
+Supported providers: `openai`, `anthropic`, `vertexai`, `anthropic-vertex`. See `llm.json.example` for examples of all providers.
+
+When `llm.json` is not present, the LLM layer is skipped — the app runs three static layers only.
 
 ### What LLM Checks Test
 
