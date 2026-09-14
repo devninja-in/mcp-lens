@@ -45,7 +45,7 @@ export default function LlmEvalModal({
           <div>
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Select LLMs</div>
             {!hasConfigs ? (
-              <p className="text-xs text-gray-400">No LLM configurations found. Set <code className="bg-gray-100 px-1 rounded">EVAL_LLM_PROVIDER</code> in .env or create llm.json.</p>
+              <p className="text-xs text-gray-400">No LLM configurations found. Create <code className="bg-gray-100 px-1 rounded">llm.json</code> (see llm.json.example).</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {configEntries.map(([name, cfg]) => {
