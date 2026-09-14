@@ -261,7 +261,7 @@ export default function AboutPage() {
       <Section id="llm" title="Layer 4: LLM-Assisted Evaluation" expanded={expanded.has('llm')} onToggle={toggle}>
         <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-4">
           <p className="text-xs text-indigo-800">
-            <strong>Requires configuration.</strong> These checks only run when <Code>EVAL_LLM_PROVIDER</Code> is set in <Code>.env</Code>. They test tool definitions from an AI agent's perspective using a real LLM.
+            <strong>Requires configuration.</strong> These checks only run when <Code>llm.json</Code> is configured (see <Code>llm.json.example</Code>). They test tool definitions from an AI agent's perspective using a real LLM.
           </p>
         </div>
 
@@ -380,32 +380,32 @@ export default function AboutPage() {
 
       {/* Configuration */}
       <Section id="config" title="LLM Configuration" expanded={expanded.has('config')} onToggle={toggle}>
-        <p>Add to your <Code>.env</Code> file to enable LLM-assisted evaluation. When not configured, the LLM layer is skipped entirely and scores auto-normalize.</p>
+        <p>Create a <Code>llm.json</Code> file to enable LLM-assisted evaluation. See <Code>llm.json.example</Code> for the full format. Secrets go in <Code>.env</Code> and are referenced via the <Code>_env</Code> suffix convention. When not configured, the LLM layer is skipped entirely and scores auto-normalize.</p>
 
         <h4 className="font-medium text-gray-800 mt-3">Supported Providers</h4>
         <div className="space-y-3 mt-2">
           {[
-            { name: 'OpenAI', vars: ['EVAL_LLM_PROVIDER=openai', 'EVAL_LLM_MODEL=gpt-4o', 'EVAL_LLM_API_KEY=sk-...'] },
-            { name: 'Anthropic', vars: ['EVAL_LLM_PROVIDER=anthropic', 'EVAL_LLM_MODEL=claude-sonnet-4-20250514', 'EVAL_LLM_API_KEY=sk-ant-...'] },
-            { name: 'VertexAI (Gemini)', vars: ['EVAL_LLM_PROVIDER=vertexai', 'EVAL_LLM_MODEL=gemini-2.0-flash', 'EVAL_LLM_PROJECT=my-gcp-project', 'EVAL_LLM_LOCATION=us-central1'] },
-            { name: 'Claude on VertexAI', vars: ['EVAL_LLM_PROVIDER=anthropic-vertex', 'EVAL_LLM_MODEL=claude-sonnet-4-20250514', 'EVAL_LLM_PROJECT=my-gcp-project', 'EVAL_LLM_LOCATION=us-east5'] },
+            { name: 'OpenAI', config: '{"provider": "openai", "model": "gpt-4o", "api_key_env": "OPENAI_API_KEY"}' },
+            { name: 'Anthropic', config: '{"provider": "anthropic", "model": "claude-sonnet-4-20250514", "api_key_env": "ANTHROPIC_API_KEY"}' },
+            { name: 'VertexAI (Gemini)', config: '{"provider": "vertexai", "model": "gemini-2.5-flash", "project_env": "GCP_PROJECT", "location_env": "GCP_LOCATION"}' },
+            { name: 'Claude on VertexAI', config: '{"provider": "anthropic-vertex", "model": "claude-sonnet-4-20250514", "project_env": "GCP_PROJECT", "location_env": "GCP_LOCATION"}' },
           ].map(provider => (
             <div key={provider.name} className="bg-gray-50 rounded-lg p-3">
               <div className="font-medium text-gray-800 text-xs mb-1">{provider.name}</div>
-              <div className="font-mono text-[11px] text-gray-600 space-y-0.5">
-                {provider.vars.map(v => <div key={v}>{v}</div>)}
+              <div className="font-mono text-[11px] text-gray-600 whitespace-pre-wrap break-all">
+                {provider.config}
               </div>
             </div>
           ))}
         </div>
 
         <p className="text-xs text-gray-500 mt-3">
-          For OpenAI-compatible endpoints (Azure, Ollama, vLLM), add <Code>EVAL_LLM_BASE_URL</Code> to point to your custom endpoint.
+          For OpenAI-compatible endpoints (Azure, Ollama, vLLM), add <Code>"base_url"</Code> to your config in llm.json.
         </p>
 
-        <h4 className="font-medium text-gray-800 mt-4">Multi-LLM Configuration</h4>
+        <h4 className="font-medium text-gray-800 mt-4">Example llm.json</h4>
         <p className="text-xs text-gray-500 mt-2">
-          For evaluating tools across multiple LLMs simultaneously, create a <Code>llm.json</Code> file in the project root.
+          Create a <Code>llm.json</Code> file in the project root.
           See <Code>llm.json.example</Code> for a complete template with all providers.
         </p>
         <div className="bg-gray-50 rounded-lg p-3 mt-2 font-mono text-[11px] text-gray-600 whitespace-pre">{`{
@@ -414,8 +414,8 @@ export default function AboutPage() {
     "gemini-flash": {
       "provider": "vertexai",
       "model": "gemini-2.5-flash",
-      "project_env": "EVAL_LLM_PROJECT",
-      "location_env": "EVAL_LLM_LOCATION"
+      "project_env": "GCP_PROJECT",
+      "location_env": "GCP_LOCATION"
     },
     "claude": {
       "provider": "anthropic",
