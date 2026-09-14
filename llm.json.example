@@ -7,14 +7,16 @@
     "gemini-flash": {
       "provider": "vertexai",
       "model": "gemini-2.5-flash",
-      "project_env": "EVAL_LLM_PROJECT",
-      "location_env": "EVAL_LLM_LOCATION"
+      "project_env": "GCP_PROJECT",
+      "location_env": "GCP_LOCATION",
+      "credentials_env": "GOOGLE_APPLICATION_CREDENTIALS"
     },
     "gemini-pro": {
       "provider": "vertexai",
       "model": "gemini-2.5-pro",
-      "project_env": "EVAL_LLM_PROJECT",
-      "location_env": "EVAL_LLM_LOCATION"
+      "project_env": "GCP_PROJECT",
+      "location_env": "GCP_LOCATION",
+      "credentials_env": "GOOGLE_APPLICATION_CREDENTIALS"
     },
     "claude": {
       "provider": "anthropic",
@@ -29,8 +31,9 @@
     "claude-vertex": {
       "provider": "anthropic-vertex",
       "model": "claude-sonnet-4-20250514",
-      "project_env": "EVAL_LLM_PROJECT",
-      "location_env": "EVAL_LLM_LOCATION"
+      "project_env": "GCP_PROJECT",
+      "location_env": "GCP_LOCATION",
+      "credentials_env": "GOOGLE_APPLICATION_CREDENTIALS"
     }
   }
 }
