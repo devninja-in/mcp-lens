@@ -211,7 +211,7 @@ export default function EvaluationView({ serverName, onToast, onReportChange }: 
           setLlmLoading(false)
         }
       } else if (withLlm && !data.metadata?.llm_configured && !hasLlmConfigs) {
-        onToast('LLM not configured. Set EVAL_LLM_PROVIDER in .env or create llm.json.', 'info')
+        onToast('LLM not configured. Create llm.json with at least one config (see llm.json.example).', 'info')
       }
     } catch (e) {
       onToast(`Evaluation failed: ${e}`, 'error')
@@ -337,7 +337,7 @@ export default function EvaluationView({ serverName, onToast, onReportChange }: 
       ) : !report.metadata?.llm_configured ? (
         <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500">
           <span className="w-2 h-2 rounded-full bg-gray-300 shrink-0" />
-          LLM-assisted evaluation: not configured — set <code className="bg-gray-100 px-1 rounded text-xs">EVAL_LLM_PROVIDER</code> in .env to enable
+          LLM-assisted evaluation: not configured — create <code className="bg-gray-100 px-1 rounded text-xs">llm.json</code> to enable (see llm.json.example)
         </div>
       ) : null}
 
