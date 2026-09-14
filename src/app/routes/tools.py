@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import UTC
 
@@ -22,7 +23,7 @@ from ..eval.llm_config import (
     load_llm_configs,
 )
 from ..eval.llm_eval import check_llm_all
-from ..eval.models import EvalReport
+from ..eval.models import CheckResult, EvalReport, LayerResult, ToolResult
 from ..eval.overlap import detect_overlaps
 from ..eval.protocol import check_protocol_all
 from ..eval.quality import check_quality_all
@@ -33,6 +34,36 @@ from ..mcp_client import ReAuthRequiredError, mcp_initialize, mcp_list_tools
 from ..tools_store import delete_tools, load_tools, save_tools
 
 logger = logging.getLogger(__name__)
+
+
+def _layer_from_dict(d: dict) -> LayerResult:
+    tools = []
+    for t in d.get("tools", []):
+        checks = [
+            CheckResult(
+                check_id=c.get("check_id", ""),
+                status=c.get("status", "skip"),
+                message=c.get("message", ""),
+                severity=c.get("severity", "info"),
+                tool_name=c.get("tool_name", ""),
+                details=c.get("details", {}),
+            )
+            for c in t.get("checks", [])
+        ]
+        tools.append(ToolResult(tool_name=t.get("tool_name", ""), checks=checks))
+    catalog_checks = [
+        CheckResult(
+            check_id=c.get("check_id", ""),
+            status=c.get("status", "skip"),
+            message=c.get("message", ""),
+            severity=c.get("severity", "info"),
+            tool_name=c.get("tool_name", ""),
+            details=c.get("details", {}),
+        )
+        for c in d.get("catalog_checks", [])
+    ]
+    return LayerResult(layer=d.get("layer", ""), tools=tools, catalog_checks=catalog_checks)
+
 
 router = APIRouter(prefix="/api/servers", tags=["tools"])
 
@@ -325,56 +356,69 @@ async def evaluate_llm(name: str, llms: str | None = None) -> dict:
         )
 
     logger.info("LLM evaluation for '%s' with configs: %s", name, llm_names)
-    per_llm: dict[str, dict] = {}
-    primary_layer = None
-    primary_meta: dict = {}
+    available = get_available_llm_configs()
 
-    for llm_name in llm_names:
+    async def _run_single_llm(llm_name: str) -> tuple[str, dict]:
         try:
             adapter = get_adapter_for_config(llm_name)
-        except (ValueError, ImportError) as e:
-            logger.error("Failed to create adapter for '%s': %s", llm_name, e)
-            per_llm[llm_name] = {"error": str(e), "metadata": {"llm_error": str(e)}}
-            continue
+        except Exception as e:
+            logger.error("Failed to create adapter for '%s': %s", llm_name, e, exc_info=True)
+            return llm_name, {"error": str(e), "metadata": {"llm_error": str(e)}}
 
-        available = get_available_llm_configs()
         cfg_info = available.get(llm_name, {})
-
         try:
             llm_layer = await check_llm_all(tools, adapter, server_description, ground_truth=ground_truth_scenarios)
-            layer_dict = llm_layer.to_dict()
             meta = {
                 "llm_provider": cfg_info.get("provider", llm_name),
                 "llm_model": cfg_info.get("model", "default"),
             }
-            per_llm[llm_name] = {"layer": layer_dict, "metadata": meta}
-            if primary_layer is None:
-                primary_layer = llm_layer
-                primary_meta = meta
+            return llm_name, {"layer": llm_layer.to_dict(), "metadata": meta, "_layer": llm_layer}
         except Exception as e:
             logger.error("LLM evaluation failed for config '%s': %s", llm_name, e, exc_info=True)
-            per_llm[llm_name] = {
+            return llm_name, {
                 "error": str(e),
                 "metadata": {"llm_provider": cfg_info.get("provider", llm_name), "llm_error": str(e)},
             }
 
-    layers = {
-        "protocol": check_protocol_all(tools),
-        "quality": check_quality_all(tools),
-        "security": check_security_all(tools),
-    }
-    overlaps = detect_overlaps(tools)
-    if overlaps:
-        layers["quality"].catalog_checks.extend(overlaps)
-    if primary_layer:
-        layers["llm"] = primary_layer
+    results = await asyncio.gather(*[_run_single_llm(n) for n in llm_names])
 
-    report = EvalReport(
-        timestamp=datetime.now(UTC).isoformat(),
-        server_name=name,
-        layers=layers,
-    )
-    report = apply_scoring(report)
+    per_llm: dict[str, dict] = {}
+    primary_layer = None
+    primary_meta: dict = {}
+    for llm_name, llm_result in results:
+        layer_obj = llm_result.pop("_layer", None)
+        per_llm[llm_name] = llm_result
+        if layer_obj is not None and primary_layer is None:
+            primary_layer = layer_obj
+            primary_meta = llm_result["metadata"]
+
+    existing_report = await get_eval_report(name)
+    if existing_report:
+        if primary_layer:
+            existing_report["layers"]["llm"] = primary_layer.to_dict()
+        report_obj = EvalReport(
+            timestamp=datetime.now(UTC).isoformat(),
+            server_name=name,
+            layers={k: _layer_from_dict(v) for k, v in existing_report["layers"].items()},
+        )
+    else:
+        layers = {
+            "protocol": check_protocol_all(tools),
+            "quality": check_quality_all(tools),
+            "security": check_security_all(tools),
+        }
+        overlaps = detect_overlaps(tools)
+        if overlaps:
+            layers["quality"].catalog_checks.extend(overlaps)
+        if primary_layer:
+            layers["llm"] = primary_layer
+        report_obj = EvalReport(
+            timestamp=datetime.now(UTC).isoformat(),
+            server_name=name,
+            layers=layers,
+        )
+
+    report = apply_scoring(report_obj)
     logger.info(
         "Multi-LLM evaluation complete for '%s': score=%.1f gate=%s",
         name,
@@ -382,13 +426,21 @@ async def evaluate_llm(name: str, llms: str | None = None) -> dict:
         report.gate_passed,
     )
 
+    top_error: str | None = None
+    if primary_layer is None and per_llm:
+        errors = [f"{n}: {v['error']}" for n, v in per_llm.items() if "error" in v]
+        if errors:
+            top_error = "All LLM evaluations failed. " + "; ".join(errors)
+
     result: dict = {
         "layer": primary_layer.to_dict() if primary_layer else None,
         "overall_score": report.overall_score,
         "gate_passed": report.gate_passed,
+        "error": top_error,
         "metadata": {
             **primary_meta,
             "ground_truth_loaded": bool(ground_truth_scenarios),
+            **({"llm_error": top_error} if top_error else {}),
         },
         "per_llm": per_llm,
     }

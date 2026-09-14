@@ -202,6 +202,14 @@ export default function EvaluationView({ serverName, onToast, onReportChange }: 
               return next
             })
           }
+          if (!llmResult.error && !llmResult.layer && llmResult.per_llm) {
+            const perLlmErrors = Object.values(llmResult.per_llm)
+              .filter((v: any) => v.error)
+              .map((v: any) => v.error)
+            if (perLlmErrors.length > 0) {
+              setLlmError(`All LLM evaluations failed: ${perLlmErrors.join('; ')}`)
+            }
+          }
           if (llmResult.per_llm) {
             setPerLlmResults(llmResult.per_llm as any)
           }
@@ -334,7 +342,7 @@ export default function EvaluationView({ serverName, onToast, onReportChange }: 
             <p className="text-xs text-amber-700 mt-0.5">{report.metadata?.llm_error || llmError}</p>
           </div>
         </div>
-      ) : !report.metadata?.llm_configured ? (
+      ) : !report.metadata?.llm_configured && Object.keys(llmConfigs).length === 0 ? (
         <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500">
           <span className="w-2 h-2 rounded-full bg-gray-300 shrink-0" />
           LLM-assisted evaluation: not configured — create <code className="bg-gray-100 px-1 rounded text-xs">llm.json</code> to enable (see llm.json.example)
@@ -559,7 +567,7 @@ export default function EvaluationView({ serverName, onToast, onReportChange }: 
       )}
 
       {/* Per-LLM Results Tabs */}
-      {perLlmResults && Object.keys(perLlmResults).length > 1 && (
+      {perLlmResults && Object.keys(perLlmResults).length >= 1 && (
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100">
             <div className="flex gap-1">
@@ -819,5 +827,3 @@ function StatusCounts({ checks }: { checks: FullCheckResult[] }) {
     </div>
   )
 }
-
-
