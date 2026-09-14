@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from .llm_config import get_eval_adapter, load_llm_config
+from .llm_config import get_adapter_for_config, get_default_llm_name, load_llm_configs
 from .models import EvalReport, ScoringConfig
 from .overlap import detect_overlaps
 from .protocol import check_protocol_all
@@ -47,28 +47,29 @@ def _build_report(tools: list[dict], server_name: str = "", run_llm: bool = Fals
 
     llm_meta: dict = {}
     if run_llm:
-        llm_config = load_llm_config()
-        if llm_config:
+        default_name = get_default_llm_name()
+        configs = load_llm_configs()
+        if not configs or not default_name:
+            print("Warning: --llm flag set but no llm.json found or no default config set", file=sys.stderr)
+        else:
+            cfg = configs.get(default_name, {})
             try:
-                adapter = get_eval_adapter()
-                if adapter:
-                    from .llm_eval import check_llm_all
+                adapter = get_adapter_for_config(default_name)
+                from .llm_eval import check_llm_all
 
-                    llm_layer = asyncio.get_event_loop().run_until_complete(check_llm_all(tools, adapter))
-                    layers["llm"] = llm_layer
-                    llm_meta = {
-                        "llm_provider": llm_config["provider"],
-                        "llm_model": llm_config.get("model") or "default",
-                    }
+                llm_layer = asyncio.get_event_loop().run_until_complete(check_llm_all(tools, adapter))
+                layers["llm"] = llm_layer
+                llm_meta = {
+                    "llm_provider": cfg.get("provider", default_name),
+                    "llm_model": cfg.get("model") or "default",
+                }
             except Exception as e:
                 print(f"LLM evaluation failed: {e}", file=sys.stderr)
                 llm_meta = {
-                    "llm_provider": llm_config["provider"],
-                    "llm_model": llm_config.get("model") or "default",
+                    "llm_provider": cfg.get("provider", default_name),
+                    "llm_model": cfg.get("model") or "default",
                     "llm_error": str(e),
                 }
-        else:
-            print("Warning: --llm flag set but EVAL_LLM_PROVIDER not configured in environment", file=sys.stderr)
 
     report = EvalReport(
         timestamp=datetime.now(UTC).isoformat(),
@@ -165,7 +166,7 @@ def main(argv: list[str] | None = None) -> int:
     p_validate.add_argument(
         "--llm",
         action="store_true",
-        help="Run LLM-assisted evaluation (requires EVAL_LLM_PROVIDER in env)",
+        help="Run LLM-assisted evaluation (requires llm.json with a default config)",
     )
 
     p_security = sub.add_parser("security", help="Security analysis")
@@ -179,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
     p_report.add_argument(
         "--llm",
         action="store_true",
-        help="Run LLM-assisted evaluation (requires EVAL_LLM_PROVIDER in env)",
+        help="Run LLM-assisted evaluation (requires llm.json with a default config)",
     )
 
     p_compare = sub.add_parser("compare", help="Compare baseline vs current reports")

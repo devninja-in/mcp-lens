@@ -6,7 +6,7 @@ from .agent_eval import (
 )
 from .assertions import evaluate_assertion, resolve_path
 from .benchmark import load_benchmark, run_benchmark
-from .llm_config import get_eval_adapter, load_llm_config
+from .llm_config import get_adapter_for_config, get_default_llm_name, load_llm_configs
 from .llm_eval import check_llm_all
 from .model_adapter import MockAdapter, get_adapter
 from .models import (
@@ -89,7 +89,8 @@ __all__ = [
     "compare_reports",
     "load_report_from_json",
     "redact_secrets",
-    "load_llm_config",
-    "get_eval_adapter",
+    "load_llm_configs",
+    "get_adapter_for_config",
+    "get_default_llm_name",
     "check_llm_all",
 ]
