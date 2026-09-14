@@ -321,6 +321,14 @@ main() {
             ;;
     esac
 
+    # Generate encryption key if not already set
+    if [ -f "$ENV_FILE" ] && ! grep -qE "^MCP_LENS_ENCRYPTION_KEY=" "$ENV_FILE"; then
+        local key
+        key=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+        set_env_var "MCP_LENS_ENCRYPTION_KEY" "$key"
+        ok "Generated encryption key for database secrets"
+    fi
+
     echo ""
     ok "Setup complete. Run ${BOLD}make start${RESET} to launch MCP Lens."
     echo ""

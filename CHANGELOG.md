@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LLM-assisted evaluation with Anthropic, OpenAI, VertexAI, and Anthropic-Vertex adapters
 - Combined JSON/PDF export with selectable sections
 - False positive marking with justification persistence
-- CLI tool (`mcp-eval`) for headless evaluation and CI integration
+- CLI tool (`mcp-lens`) for headless evaluation and CI integration
 - Interactive `make setup` with menu-driven configuration
 - SQLite persistence for server configs, auth tokens, and eval reports
 - In-app About page with evaluation rules reference

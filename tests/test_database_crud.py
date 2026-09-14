@@ -2,6 +2,7 @@ import json
 
 import pytest
 import pytest_asyncio
+from cryptography.fernet import Fernet
 
 import src.app.database as db_module
 from src.app.database import (
@@ -9,8 +10,10 @@ from src.app.database import (
     delete_ground_truth,
     get_eval_report,
     get_ground_truth,
+    get_secret,
     save_eval_report,
     save_ground_truth,
+    set_secret,
 )
 
 
@@ -363,3 +366,56 @@ async def test_migrate_tokens_dcr_and_sso(tmp_path, monkeypatch):
     assert oauth == {"access_token": "at"}
 
     await db_module.dispose_db()
+
+
+@pytest.mark.asyncio
+async def test_secret_encryption_roundtrip(db, monkeypatch):
+    key = Fernet.generate_key()
+    fernet = Fernet(key)
+    monkeypatch.setattr(db_module, "_fernet", fernet)
+
+    await set_secret("enc-server", "bearer", {"token": "secret123"})
+    result = await get_secret("enc-server", "bearer")
+    assert result == {"token": "secret123"}
+
+
+@pytest.mark.asyncio
+async def test_secret_stored_encrypted_on_disk(db, monkeypatch):
+    key = Fernet.generate_key()
+    fernet = Fernet(key)
+    monkeypatch.setattr(db_module, "_fernet", fernet)
+
+    await set_secret("enc-server", "bearer", {"token": "secret123"})
+
+    async with db_module._get_session() as session:
+        row = await session.get(db_module.McpSecret, ("enc-server", "bearer"))
+        assert row is not None
+        assert row.secret_data != json.dumps({"token": "secret123"})
+        assert row.secret_data.startswith("gAAAAA")
+
+
+@pytest.mark.asyncio
+async def test_secret_no_encryption_without_key(db, monkeypatch):
+    monkeypatch.setattr(db_module, "_fernet", None)
+
+    await set_secret("plain-server", "bearer", {"token": "plain123"})
+    result = await get_secret("plain-server", "bearer")
+    assert result == {"token": "plain123"}
+
+    async with db_module._get_session() as session:
+        row = await session.get(db_module.McpSecret, ("plain-server", "bearer"))
+        assert row is not None
+        assert row.secret_data == json.dumps({"token": "plain123"})
+
+
+@pytest.mark.asyncio
+async def test_secret_plaintext_migration_fallback(db, monkeypatch):
+    monkeypatch.setattr(db_module, "_fernet", None)
+    await set_secret("migrate-server", "bearer", {"token": "old_plain"})
+
+    key = Fernet.generate_key()
+    fernet = Fernet(key)
+    monkeypatch.setattr(db_module, "_fernet", fernet)
+
+    result = await get_secret("migrate-server", "bearer")
+    assert result == {"token": "old_plain"}

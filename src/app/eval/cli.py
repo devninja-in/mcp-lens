@@ -155,7 +155,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="mcp-eval",
+        prog="mcp-lens",
         description="MCP Tool Evaluation Framework",
     )
     sub = parser.add_subparsers(dest="command")
