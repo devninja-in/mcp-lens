@@ -385,12 +385,12 @@ async def evaluate_llm(name: str, llms: str | None = None) -> dict:
     per_llm: dict[str, dict] = {}
     primary_layer = None
     primary_meta: dict = {}
-    for llm_name, result in results:
-        layer_obj = result.pop("_layer", None)
-        per_llm[llm_name] = result
+    for llm_name, llm_result in results:
+        layer_obj = llm_result.pop("_layer", None)
+        per_llm[llm_name] = llm_result
         if layer_obj is not None and primary_layer is None:
             primary_layer = layer_obj
-            primary_meta = result["metadata"]
+            primary_meta = llm_result["metadata"]
 
     existing_report = await get_eval_report(name)
     if existing_report:
