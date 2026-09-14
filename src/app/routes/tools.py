@@ -23,7 +23,7 @@ from ..eval.llm_config import (
     load_llm_configs,
 )
 from ..eval.llm_eval import check_llm_all
-from ..eval.models import CheckResult, EvalReport, LayerResult, ToolResult
+from ..eval.models import CheckResult, EvalReport, LayerResult, Severity, Status, ToolResult
 from ..eval.overlap import detect_overlaps
 from ..eval.protocol import check_protocol_all
 from ..eval.quality import check_quality_all
@@ -36,32 +36,23 @@ from ..tools_store import delete_tools, load_tools, save_tools
 logger = logging.getLogger(__name__)
 
 
+def _check_from_dict(c: dict) -> CheckResult:
+    return CheckResult(
+        check_id=c.get("check_id", ""),
+        status=Status(c.get("status", "skip")),
+        message=c.get("message", ""),
+        severity=Severity(c.get("severity", "info")),
+        tool_name=c.get("tool_name", ""),
+        details=c.get("details", {}),
+    )
+
+
 def _layer_from_dict(d: dict) -> LayerResult:
     tools = []
     for t in d.get("tools", []):
-        checks = [
-            CheckResult(
-                check_id=c.get("check_id", ""),
-                status=c.get("status", "skip"),
-                message=c.get("message", ""),
-                severity=c.get("severity", "info"),
-                tool_name=c.get("tool_name", ""),
-                details=c.get("details", {}),
-            )
-            for c in t.get("checks", [])
-        ]
+        checks = [_check_from_dict(c) for c in t.get("checks", [])]
         tools.append(ToolResult(tool_name=t.get("tool_name", ""), checks=checks))
-    catalog_checks = [
-        CheckResult(
-            check_id=c.get("check_id", ""),
-            status=c.get("status", "skip"),
-            message=c.get("message", ""),
-            severity=c.get("severity", "info"),
-            tool_name=c.get("tool_name", ""),
-            details=c.get("details", {}),
-        )
-        for c in d.get("catalog_checks", [])
-    ]
+    catalog_checks = [_check_from_dict(c) for c in d.get("catalog_checks", [])]
     return LayerResult(layer=d.get("layer", ""), tools=tools, catalog_checks=catalog_checks)
 
 
