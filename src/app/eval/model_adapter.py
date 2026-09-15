@@ -150,7 +150,7 @@ class AnthropicVertexAdapter:
         location: str = "us-east5",
     ):
         try:
-            from anthropic import AnthropicVertex
+            from anthropic import AsyncAnthropicVertex
         except ImportError as err:
             raise ImportError(
                 "anthropic[vertex] package required. Install with: pip install 'anthropic[vertex]'"
@@ -161,7 +161,7 @@ class AnthropicVertexAdapter:
         if location:
             kwargs["region"] = location
         self.model = model
-        self.client = AnthropicVertex(**kwargs)
+        self.client = AsyncAnthropicVertex(**kwargs)
         logger.debug("Initialized AnthropicVertexAdapter with model=%s project=%s", model, project)
 
     async def select_tool(self, tools: list[dict], user_prompt: str) -> dict:
@@ -179,13 +179,11 @@ class AnthropicVertexAdapter:
         return {"tool_name": "", "arguments": {}}
 
     async def generate_answer(self, tool_result: Any, user_prompt: str) -> str:
+        content = f"Tool result: {tool_result}\n\n{user_prompt}" if tool_result is not None else user_prompt
         response = await self.client.messages.create(
             model=self.model,
             max_tokens=1024,
-            messages=[
-                {"role": "user", "content": user_prompt},
-                {"role": "assistant", "content": f"Based on the tool result: {tool_result}"},
-            ],
+            messages=[{"role": "user", "content": content}],
         )
         return response.content[0].text if response.content else ""
 
