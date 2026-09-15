@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLI Reference - MCP Lens</title>
+  <meta name="description" content="Command-line interface reference for MCP Lens including validate, report, compare, and security commands with CI integration examples.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e' }
+          },
+          fontFamily: {
+            sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'SF Mono', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .gradient-bg { background: linear-gradient(135deg, #0c4a6e 0%, #0284c7 50%, #0ea5e9 100%); }
+    .code-block { background: #0f172a; color: #e0f2fe; border-radius: 0.5rem; padding: 1.25rem; overflow-x: auto; font-size: 0.875rem; line-height: 1.7; }
+    .code-block .comment { color: #7dd3fc; }
+    .code-block .command { color: #bae6fd; }
+  </style>
+</head>
+<body class="bg-white text-gray-900 antialiased">
+
+  <!-- Nav -->
+  <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-gray-200">
+    <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+      <a href="../index.html" class="flex items-center gap-2 font-bold text-lg text-brand-700">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        MCP Lens
+      </a>
+      <div class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
+        <a href="getting-started.html" class="hover:text-brand-600">Getting Started</a>
+        <a href="configuration.html" class="hover:text-brand-600">Configuration</a>
+        <a href="evaluation.html" class="hover:text-brand-600">Evaluation</a>
+        <a href="api-reference.html" class="hover:text-brand-600">API</a>
+        <a href="cli.html" class="text-brand-600 font-semibold">CLI</a>
+        <a href="architecture.html" class="hover:text-brand-600">Architecture</a>
+        <a href="https://github.com/devninja-in/mcp-lens" class="hover:text-brand-600" target="_blank">GitHub</a>
+      </div>
+      <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="md:hidden p-2 text-gray-600">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden border-t border-gray-100 bg-white px-6 py-3 space-y-2 text-sm font-medium text-gray-600">
+      <a href="getting-started.html" class="block py-1 hover:text-brand-600">Getting Started</a>
+      <a href="configuration.html" class="block py-1 hover:text-brand-600">Configuration</a>
+      <a href="evaluation.html" class="block py-1 hover:text-brand-600">Evaluation</a>
+      <a href="api-reference.html" class="block py-1 hover:text-brand-600">API</a>
+      <a href="cli.html" class="block py-1 text-brand-600 font-semibold">CLI</a>
+      <a href="architecture.html" class="block py-1 hover:text-brand-600">Architecture</a>
+      <a href="https://github.com/devninja-in/mcp-lens" class="block py-1 hover:text-brand-600" target="_blank">GitHub</a>
+    </div>
+  </nav>
+
+  <!-- Docs Layout -->
+  <div class="max-w-6xl mx-auto px-6 py-10 flex gap-10">
+
+    <!-- Sidebar -->
+    <aside class="hidden md:block w-56 shrink-0">
+      <nav class="sticky top-24 space-y-1 text-sm">
+        <a href="getting-started.html" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-brand-600">Getting Started</a>
+        <a href="configuration.html" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-brand-600">Configuration</a>
+        <a href="evaluation.html" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-brand-600">Evaluation</a>
+        <a href="api-reference.html" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-brand-600">API Reference</a>
+        <a href="cli.html" class="block px-3 py-2 rounded-lg bg-brand-50 text-brand-700 font-semibold">CLI</a>
+        <a href="architecture.html" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-brand-600">Architecture</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="min-w-0 flex-1">
+      <h1 class="text-3xl font-bold mb-2">CLI Reference</h1>
+      <p class="text-gray-500 mb-8">Run evaluations headlessly from the command line or in CI pipelines.</p>
+
+      <!-- Installation -->
+      <h2 class="text-xl font-bold mb-4 pb-2 border-b border-gray-200">Installation</h2>
+      <div class="code-block mb-4">
+        uv sync &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment"># or: pip install -e .</span>
+      </div>
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-10 text-sm text-blue-800">
+        Tip: activate the virtualenv to drop the <code class="bg-blue-100 px-1.5 py-0.5 rounded text-xs font-mono">uv run</code> prefix.
+      </div>
+
+      <!-- Commands -->
+      <h2 class="text-xl font-bold mb-6 pb-2 border-b border-gray-200">Commands</h2>
+
+      <!-- validate -->
+      <h3 class="text-lg font-semibold mb-3">validate</h3>
+      <p class="text-sm text-gray-600 mb-4">Validate a tools YAML file. Exit code 0 = pass, 1 = fail.</p>
+      <div class="code-block mb-8">
+        <span class="comment"># Basic validation</span><br>
+        uv run mcp-lens validate tools.yaml<br><br>
+        <span class="comment"># With LLM checks</span><br>
+        uv run mcp-lens validate tools.yaml --llm
+      </div>
+
+      <!-- report -->
+      <h3 class="text-lg font-semibold mb-3">report</h3>
+      <p class="text-sm text-gray-600 mb-4">Generate a full evaluation report.</p>
+      <div class="code-block mb-8">
+        <span class="comment"># JSON output to file</span><br>
+        uv run mcp-lens report tools.yaml --format json --output report.json<br><br>
+        <span class="comment"># Plain text output</span><br>
+        uv run mcp-lens report tools.yaml --format text<br><br>
+        <span class="comment"># With LLM checks</span><br>
+        uv run mcp-lens report tools.yaml --llm
+      </div>
+
+      <!-- compare -->
+      <h3 class="text-lg font-semibold mb-3">compare</h3>
+      <p class="text-sm text-gray-600 mb-4">Compare two reports for regressions.</p>
+      <div class="code-block mb-8">
+        uv run mcp-lens compare baseline.json current.json
+      </div>
+
+      <!-- security -->
+      <h3 class="text-lg font-semibold mb-3">security</h3>
+      <p class="text-sm text-gray-600 mb-4">Security-only analysis.</p>
+      <div class="code-block mb-10">
+        uv run mcp-lens security tools.yaml
+      </div>
+
+      <!-- CI Integration -->
+      <h2 class="text-xl font-bold mb-4 pb-2 border-b border-gray-200">CI Integration</h2>
+      <p class="text-sm text-gray-600 mb-4">GitHub Actions example:</p>
+      <div class="code-block mb-10">
+        <span class="comment"># .github/workflows/mcp-eval.yml</span><br>
+        - name: Install dependencies<br>
+        &nbsp;&nbsp;run: uv sync<br><br>
+        - name: Validate MCP tools<br>
+        &nbsp;&nbsp;run: uv run mcp-lens validate tools/my-server.yaml<br><br>
+        - name: Generate report<br>
+        &nbsp;&nbsp;run: uv run mcp-lens report tools/my-server.yaml --format json --output report.json<br><br>
+        - uses: actions/upload-artifact@v4<br>
+        &nbsp;&nbsp;with:<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;name: mcp-eval-report<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;path: report.json
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-200 py-10 px-6 bg-gray-50">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+      <div class="flex items-center gap-2 font-medium text-gray-700">
+        <svg class="w-5 h-5 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        MCP Lens
+      </div>
+      <div class="flex gap-6">
+        <a href="getting-started.html" class="hover:text-brand-600">Docs</a>
+        <a href="api-reference.html" class="hover:text-brand-600">API</a>
+        <a href="cli.html" class="hover:text-brand-600">CLI</a>
+        <a href="https://github.com/devninja-in/mcp-lens" class="hover:text-brand-600" target="_blank">GitHub</a>
+      </div>
+      <p>Apache 2.0 License</p>
+    </div>
+  </footer>
+
+</body>
+</html>

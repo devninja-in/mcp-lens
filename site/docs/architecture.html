@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture - MCP Lens</title>
+  <meta name="description" content="Architecture overview of MCP Lens including directory structure, backend and frontend design, data flow, and security model.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e' }
+          },
+          fontFamily: {
+            sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'SF Mono', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .gradient-bg { background: linear-gradient(135deg, #0c4a6e 0%, #0284c7 50%, #0ea5e9 100%); }
+    .code-block { background: #0f172a; color: #e0f2fe; border-radius: 0.5rem; padding: 1.25rem; overflow-x: auto; font-size: 0.875rem; line-height: 1.7; }
+    .code-block .comment { color: #7dd3fc; }
+    .code-block .command { color: #bae6fd; }
+  </style>
+</head>
+<body class="bg-white text-gray-900 antialiased">
+
+  <!-- Nav -->
+  <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-gray-200">
+    <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+      <a href="../index.html" class="flex items-center gap-2 font-bold text-lg text-brand-700">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        MCP Lens
+      </a>
+      <div class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
+        <a href="getting-started.html" class="hover:text-brand-600">Getting Started</a>
+        <a href="configuration.html" class="hover:text-brand-600">Configuration</a>
+        <a href="evaluation.html" class="hover:text-brand-600">Evaluation</a>
+        <a href="api-reference.html" class="hover:text-brand-600">API</a>
+        <a href="cli.html" class="hover:text-brand-600">CLI</a>
+        <a href="architecture.html" class="text-brand-600 font-semibold">Architecture</a>
+        <a href="https://github.com/devninja-in/mcp-lens" class="hover:text-brand-600" target="_blank">GitHub</a>
+      </div>
+      <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="md:hidden p-2 text-gray-600">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden border-t border-gray-100 bg-white px-6 py-3 space-y-2 text-sm font-medium text-gray-600">
+      <a href="getting-started.html" class="block py-1 hover:text-brand-600">Getting Started</a>
+      <a href="configuration.html" class="block py-1 hover:text-brand-600">Configuration</a>
+      <a href="evaluation.html" class="block py-1 hover:text-brand-600">Evaluation</a>
+      <a href="api-reference.html" class="block py-1 hover:text-brand-600">API</a>
+      <a href="cli.html" class="block py-1 hover:text-brand-600">CLI</a>
+      <a href="architecture.html" class="block py-1 text-brand-600 font-semibold">Architecture</a>
+      <a href="https://github.com/devninja-in/mcp-lens" class="block py-1 hover:text-brand-600" target="_blank">GitHub</a>
+    </div>
+  </nav>
+
+  <!-- Docs Layout -->
+  <div class="max-w-6xl mx-auto px-6 py-10 flex gap-10">
+
+    <!-- Sidebar -->
+    <aside class="hidden md:block w-56 shrink-0">
+      <nav class="sticky top-24 space-y-1 text-sm">
+        <a href="getting-started.html" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-brand-600">Getting Started</a>
+        <a href="configuration.html" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-brand-600">Configuration</a>
+        <a href="evaluation.html" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-brand-600">Evaluation</a>
+        <a href="api-reference.html" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-brand-600">API Reference</a>
+        <a href="cli.html" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-brand-600">CLI</a>
+        <a href="architecture.html" class="block px-3 py-2 rounded-lg bg-brand-50 text-brand-700 font-semibold">Architecture</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="min-w-0 flex-1">
+      <h1 class="text-3xl font-bold mb-2">Architecture</h1>
+      <p class="text-gray-500 mb-8">System design and structure of the MCP Lens application.</p>
+
+      <!-- Overview -->
+      <h2 class="text-xl font-bold mb-4 pb-2 border-b border-gray-200">Overview</h2>
+      <p class="text-sm text-gray-600 mb-8 leading-relaxed">MCP Lens is a full-stack application with a Python/FastAPI backend and React/Vite frontend. The backend provides a REST API for managing MCP server connections, fetching tool definitions, and running multi-layer evaluations. The frontend delivers an interactive UI for browsing tools, viewing reports, and configuring servers.</p>
+
+      <!-- Directory Structure -->
+      <h2 class="text-xl font-bold mb-4 pb-2 border-b border-gray-200">Directory Structure</h2>
+      <div class="code-block mb-10">
+        src/<br>
+        &nbsp;&nbsp;app/<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;eval/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment"># Evaluation engine</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;protocol.py &nbsp;&nbsp; <span class="comment"># Layer 1: MCP spec compliance</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;quality.py &nbsp;&nbsp;&nbsp; <span class="comment"># Layer 2: Tool quality &amp; overlap detection</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;security.py &nbsp;&nbsp; <span class="comment"># Layer 3: Security analysis</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;llm_eval.py &nbsp;&nbsp; <span class="comment"># Layer 4: LLM-assisted evaluation</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;scoring.py &nbsp;&nbsp;&nbsp; <span class="comment"># Scoring &amp; gate logic</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;runner.py &nbsp;&nbsp;&nbsp;&nbsp; <span class="comment"># Orchestrates all layers</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;model_adapter.py <span class="comment"># LLM provider adapters</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;llm_config.py &nbsp;<span class="comment"># Multi-LLM config loader (llm.json)</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;regression.py &nbsp;<span class="comment"># Report comparison</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;routes/<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;servers.py &nbsp;&nbsp;&nbsp; <span class="comment"># CRUD endpoints for server configs</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tools.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment"># Tool fetch, evaluation, false positives</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;auth_routes.py <span class="comment"># OAuth/DCR flows, token management</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;database.py &nbsp;&nbsp;&nbsp;&nbsp; <span class="comment"># SQLAlchemy async models</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;mcp_client.py &nbsp;&nbsp; <span class="comment"># MCP protocol client (JSON-RPC 2.0)</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;auth.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment"># OAuth token management, DCR</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;config.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment"># Configuration loader</span><br>
+        &nbsp;&nbsp;frontend/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment"># React + Vite + Tailwind UI</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;src/<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;components/<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ServerList.tsx &nbsp;&nbsp;&nbsp;&nbsp; <span class="comment"># Server cards</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ServerForm.tsx &nbsp;&nbsp;&nbsp;&nbsp; <span class="comment"># Add/edit server modal</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ToolsViewer.tsx &nbsp;&nbsp;&nbsp; <span class="comment"># Tool list + evaluation tabs</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;EvaluationView.tsx &nbsp;<span class="comment"># Evaluation report</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ComparisonView.tsx &nbsp;<span class="comment"># Report comparison</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DownloadModal.tsx &nbsp;&nbsp;<span class="comment"># Export options</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;LlmEvalModal.tsx &nbsp;&nbsp;<span class="comment"># LLM eval config</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;AboutPage.tsx &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Evaluation rules reference</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;api.ts &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># API client</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;types.ts &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># TypeScript interfaces</span><br>
+        tests/<br>
+        &nbsp;&nbsp;eval/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment"># Evaluation engine tests (531+)</span><br>
+        llm.json.example &nbsp;&nbsp;&nbsp;&nbsp; <span class="comment"># Multi-LLM config template</span>
+      </div>
+
+      <!-- Backend -->
+      <h2 class="text-xl font-bold mb-4 pb-2 border-b border-gray-200">Backend</h2>
+      <ul class="space-y-3 mb-10 text-sm text-gray-600">
+        <li class="flex gap-2">
+          <span class="text-brand-500 mt-1 shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+          <span><strong class="text-gray-900">FastAPI</strong> with async/await for all request handling</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-brand-500 mt-1 shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+          <span><strong class="text-gray-900">SQLAlchemy async</strong> for database access (SQLite default, PostgreSQL optional)</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-brand-500 mt-1 shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+          <span><strong class="text-gray-900">MCP client</strong> using JSON-RPC 2.0 over streamable HTTP</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-brand-500 mt-1 shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+          <span><strong class="text-gray-900">Evaluation engine</strong> with 4 pluggable layers (protocol, quality, security, LLM)</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-brand-500 mt-1 shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+          <span><strong class="text-gray-900">LLM adapters:</strong> Anthropic, OpenAI, Vertex AI (Gemini), Anthropic on Vertex</span>
+        </li>
+      </ul>
+
+      <!-- Frontend -->
+      <h2 class="text-xl font-bold mb-4 pb-2 border-b border-gray-200">Frontend</h2>
+      <ul class="space-y-3 mb-10 text-sm text-gray-600">
+        <li class="flex gap-2">
+          <span class="text-brand-500 mt-1 shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+          <span><strong class="text-gray-900">React 18</strong> with Vite build tool</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-brand-500 mt-1 shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+          <span><strong class="text-gray-900">Tailwind CSS</strong> for styling</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-brand-500 mt-1 shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+          <span><strong class="text-gray-900">State-based routing</strong> (no react-router)</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-brand-500 mt-1 shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+          <span><strong class="text-gray-900">API client</strong> for all backend communication</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-brand-500 mt-1 shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+          <span><strong class="text-gray-900">PDF/JSON export</strong> via jspdf</span>
+        </li>
+      </ul>
+
+      <!-- Data Flow -->
+      <h2 class="text-xl font-bold mb-4 pb-2 border-b border-gray-200">Data Flow</h2>
+      <div class="space-y-4 mb-10">
+        <div class="flex gap-4 items-start">
+          <span class="shrink-0 w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-bold">1</span>
+          <div>
+            <p class="text-sm font-medium text-gray-900">Add Server</p>
+            <p class="text-sm text-gray-600">User adds MCP server via UI &rarr; stored in SQLite</p>
+          </div>
+        </div>
+        <div class="flex gap-4 items-start">
+          <span class="shrink-0 w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-bold">2</span>
+          <div>
+            <p class="text-sm font-medium text-gray-900">Fetch Tools</p>
+            <p class="text-sm text-gray-600">User clicks "Fetch Tools" &rarr; backend connects via MCP client &rarr; tools cached in DB</p>
+          </div>
+        </div>
+        <div class="flex gap-4 items-start">
+          <span class="shrink-0 w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-bold">3</span>
+          <div>
+            <p class="text-sm font-medium text-gray-900">Run Evaluation</p>
+            <p class="text-sm text-gray-600">4 layers execute sequentially &rarr; scored report saved to database</p>
+          </div>
+        </div>
+        <div class="flex gap-4 items-start">
+          <span class="shrink-0 w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-bold">4</span>
+          <div>
+            <p class="text-sm font-medium text-gray-900">LLM Evaluation (optional)</p>
+            <p class="text-sm text-gray-600">Runs in parallel across selected models &rarr; merged into report</p>
+          </div>
+        </div>
+        <div class="flex gap-4 items-start">
+          <span class="shrink-0 w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-bold">5</span>
+          <div>
+            <p class="text-sm font-medium text-gray-900">View &amp; Export</p>
+            <p class="text-sm text-gray-600">Results displayed in UI &rarr; exportable as JSON/YAML/PDF</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security -->
+      <h2 class="text-xl font-bold mb-4 pb-2 border-b border-gray-200">Security</h2>
+      <ul class="space-y-3 mb-10 text-sm text-gray-600">
+        <li class="flex gap-2">
+          <span class="text-brand-500 mt-1 shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          </span>
+          <span><strong class="text-gray-900">Auth tokens encrypted at rest</strong> with Fernet (AES-128-CBC)</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-brand-500 mt-1 shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          </span>
+          <span><strong class="text-gray-900">LLM evaluation is read-only</strong> &mdash; tools are never executed</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-brand-500 mt-1 shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          </span>
+          <span><strong class="text-gray-900">API key authentication</strong> optional via X-API-Key header</span>
+        </li>
+      </ul>
+
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-200 py-10 px-6 bg-gray-50">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+      <div class="flex items-center gap-2 font-medium text-gray-700">
+        <svg class="w-5 h-5 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        MCP Lens
+      </div>
+      <div class="flex gap-6">
+        <a href="getting-started.html" class="hover:text-brand-600">Docs</a>
+        <a href="api-reference.html" class="hover:text-brand-600">API</a>
+        <a href="cli.html" class="hover:text-brand-600">CLI</a>
+        <a href="https://github.com/devninja-in/mcp-lens" class="hover:text-brand-600" target="_blank">GitHub</a>
+      </div>
+      <p>Apache 2.0 License</p>
+    </div>
+  </footer>
+
+</body>
+</html>
