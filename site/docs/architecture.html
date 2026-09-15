@@ -196,6 +196,80 @@
         </li>
       </ul>
 
+      <!-- Architecture Diagram -->
+      <h2 class="text-xl font-bold mb-4 pb-2 border-b border-gray-200">Architecture Diagram</h2>
+      <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 mb-10 overflow-x-auto">
+        <svg viewBox="0 0 820 420" class="w-full max-w-3xl mx-auto" style="min-width:600px" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="8" markerHeight="6" orient="auto"><path d="M0,0 L10,3 L0,6 Z" fill="#0284c7"/></marker>
+            <filter id="shadow"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.08"/></filter>
+          </defs>
+
+          <!-- User / Browser -->
+          <rect x="20" y="170" width="120" height="60" rx="10" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1.5" filter="url(#shadow)"/>
+          <text x="80" y="196" text-anchor="middle" font-size="12" font-weight="600" fill="#0c4a6e">Browser</text>
+          <text x="80" y="212" text-anchor="middle" font-size="10" fill="#075985">:5173</text>
+
+          <!-- Arrow: Browser → Frontend -->
+          <line x1="140" y1="200" x2="188" y2="200" stroke="#0284c7" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+          <!-- Frontend Box -->
+          <rect x="192" y="140" width="140" height="120" rx="10" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="1.5" filter="url(#shadow)"/>
+          <text x="262" y="164" text-anchor="middle" font-size="12" font-weight="700" fill="#0c4a6e">Frontend</text>
+          <text x="262" y="182" text-anchor="middle" font-size="10" fill="#075985">React + Vite</text>
+          <text x="262" y="196" text-anchor="middle" font-size="10" fill="#075985">Tailwind CSS</text>
+          <text x="262" y="214" text-anchor="middle" font-size="9" fill="#0369a1">ServerList</text>
+          <text x="262" y="228" text-anchor="middle" font-size="9" fill="#0369a1">EvaluationView</text>
+          <text x="262" y="242" text-anchor="middle" font-size="9" fill="#0369a1">ToolsViewer</text>
+
+          <!-- Arrow: Frontend → Backend -->
+          <line x1="332" y1="200" x2="388" y2="200" stroke="#0284c7" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <text x="360" y="192" text-anchor="middle" font-size="9" fill="#64748b">REST API</text>
+
+          <!-- Backend Box -->
+          <rect x="392" y="100" width="160" height="200" rx="10" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="1.5" filter="url(#shadow)"/>
+          <text x="472" y="124" text-anchor="middle" font-size="12" font-weight="700" fill="#0c4a6e">Backend</text>
+          <text x="472" y="142" text-anchor="middle" font-size="10" fill="#075985">FastAPI :5002</text>
+          <line x1="410" y1="152" x2="534" y2="152" stroke="#bae6fd" stroke-width="1"/>
+          <text x="472" y="170" text-anchor="middle" font-size="9" fill="#0369a1">Routes (servers, tools, auth)</text>
+          <text x="472" y="188" text-anchor="middle" font-size="9" fill="#0369a1">MCP Client (JSON-RPC)</text>
+          <text x="472" y="206" text-anchor="middle" font-size="9" fill="#0369a1">Eval: Protocol</text>
+          <text x="472" y="220" text-anchor="middle" font-size="9" fill="#0369a1">Eval: Quality</text>
+          <text x="472" y="234" text-anchor="middle" font-size="9" fill="#0369a1">Eval: Security</text>
+          <text x="472" y="248" text-anchor="middle" font-size="9" fill="#0369a1">Eval: LLM</text>
+          <text x="472" y="266" text-anchor="middle" font-size="9" fill="#0369a1">Scoring &amp; Gating</text>
+          <text x="472" y="284" text-anchor="middle" font-size="9" fill="#0369a1">Auth (OAuth, DCR, Token)</text>
+
+          <!-- Arrow: Backend → Database -->
+          <line x1="472" y1="300" x2="472" y2="340" stroke="#0284c7" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+          <!-- Database -->
+          <ellipse cx="472" cy="370" rx="70" ry="24" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1.5" filter="url(#shadow)"/>
+          <text x="472" y="367" text-anchor="middle" font-size="11" font-weight="600" fill="#0c4a6e">SQLite</text>
+          <text x="472" y="381" text-anchor="middle" font-size="9" fill="#075985">servers, tools, reports</text>
+
+          <!-- Arrow: Backend → MCP Servers -->
+          <line x1="552" y1="170" x2="618" y2="120" stroke="#0284c7" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <text x="600" y="155" text-anchor="middle" font-size="9" fill="#64748b">MCP</text>
+
+          <!-- MCP Servers -->
+          <rect x="622" y="80" width="170" height="70" rx="10" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1.5" filter="url(#shadow)"/>
+          <text x="707" y="106" text-anchor="middle" font-size="12" font-weight="600" fill="#0c4a6e">MCP Servers</text>
+          <text x="707" y="122" text-anchor="middle" font-size="9" fill="#075985">Jira, GitHub, Slack ...</text>
+          <text x="707" y="136" text-anchor="middle" font-size="9" fill="#075985">Streamable HTTP / SSE</text>
+
+          <!-- Arrow: Backend → LLM Providers -->
+          <line x1="552" y1="240" x2="618" y2="280" stroke="#0284c7" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <text x="596" y="252" text-anchor="middle" font-size="9" fill="#64748b">API</text>
+
+          <!-- LLM Providers -->
+          <rect x="622" y="260" width="170" height="70" rx="10" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1.5" filter="url(#shadow)"/>
+          <text x="707" y="286" text-anchor="middle" font-size="12" font-weight="600" fill="#0c4a6e">LLM Providers</text>
+          <text x="707" y="302" text-anchor="middle" font-size="9" fill="#075985">Gemini, Claude, GPT</text>
+          <text x="707" y="316" text-anchor="middle" font-size="9" fill="#075985">via llm.json config</text>
+        </svg>
+      </div>
+
       <!-- Data Flow -->
       <h2 class="text-xl font-bold mb-4 pb-2 border-b border-gray-200">Data Flow</h2>
       <div class="space-y-4 mb-10">
