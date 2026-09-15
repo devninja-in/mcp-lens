@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluation - MCP Lens</title>
+  <meta name="description" content="Understand MCP Lens evaluation layers: protocol compliance, quality, security analysis, and LLM-assisted usability checks.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e' }
+          },
+          fontFamily: {
+            sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'SF Mono', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .gradient-bg { background: linear-gradient(135deg, #0c4a6e 0%, #0284c7 50%, #0ea5e9 100%); }
+    .code-block { background: #0f172a; color: #e0f2fe; border-radius: 0.5rem; padding: 1.25rem; overflow-x: auto; font-size: 0.875rem; line-height: 1.7; }
+    .code-block .comment { color: #7dd3fc; }
+    .code-block .command { color: #bae6fd; }
+  </style>
+</head>
+<body class="bg-white text-gray-900 antialiased">
+
+  <!-- Nav -->
+  <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-gray-200">
+    <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+      <a href="../index.html" class="flex items-center gap-2 font-bold text-lg text-brand-700">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        MCP Lens
+      </a>
+      <div class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
+        <a href="getting-started.html" class="hover:text-brand-600">Getting Started</a>
+        <a href="configuration.html" class="hover:text-brand-600">Configuration</a>
+        <a href="evaluation.html" class="text-brand-600 font-semibold">Evaluation</a>
+        <a href="api-reference.html" class="hover:text-brand-600">API</a>
+        <a href="cli.html" class="hover:text-brand-600">CLI</a>
+        <a href="architecture.html" class="hover:text-brand-600">Architecture</a>
+        <a href="https://github.com/devninja-in/mcp-lens" class="hover:text-brand-600" target="_blank">GitHub</a>
+      </div>
+      <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="md:hidden p-2 text-gray-600">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden border-t border-gray-100 bg-white px-6 py-3 space-y-2 text-sm font-medium text-gray-600">
+      <a href="getting-started.html" class="block py-1 hover:text-brand-600">Getting Started</a>
+      <a href="configuration.html" class="block py-1 hover:text-brand-600">Configuration</a>
+      <a href="evaluation.html" class="block py-1 text-brand-600 font-semibold">Evaluation</a>
+      <a href="api-reference.html" class="block py-1 hover:text-brand-600">API</a>
+      <a href="cli.html" class="block py-1 hover:text-brand-600">CLI</a>
+      <a href="architecture.html" class="block py-1 hover:text-brand-600">Architecture</a>
+      <a href="https://github.com/devninja-in/mcp-lens" class="block py-1 hover:text-brand-600" target="_blank">GitHub</a>
+    </div>
+  </nav>
+
+  <!-- Docs Layout -->
+  <div class="max-w-6xl mx-auto px-6 py-10 flex gap-10">
+
+    <!-- Sidebar -->
+    <aside class="hidden md:block w-56 shrink-0">
+      <nav class="sticky top-24 space-y-1 text-sm">
+        <h4 class="font-semibold text-gray-900 mb-3">Documentation</h4>
+        <a href="getting-started.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">Getting Started</a>
+        <a href="configuration.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">Configuration</a>
+        <a href="evaluation.html" class="block px-3 py-1.5 rounded-md bg-brand-50 text-brand-700 font-medium">Evaluation</a>
+        <a href="api-reference.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">API Reference</a>
+        <a href="cli.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">CLI</a>
+        <a href="architecture.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">Architecture</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="min-w-0 flex-1">
+      <h1 class="text-3xl font-bold mb-2">Evaluation</h1>
+      <p class="text-gray-500 mb-8">Multi-layer evaluation covering protocol compliance, quality, security, and LLM-assisted usability.</p>
+
+      <!-- Overview -->
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold mb-4" id="overview">Overview</h2>
+        <p class="text-gray-700">MCP Lens runs four evaluation layers. The first three (Protocol, Quality, Security) are static analysis and require no external dependencies. The fourth (LLM) requires a configured LLM provider &mdash; see <a href="configuration.html#llm-config" class="text-brand-600 hover:underline">LLM Configuration</a>.</p>
+      </section>
+
+      <!-- Evaluation Layers -->
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold mb-4" id="evaluation-layers">Evaluation Layers</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">Layer</th>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">Checks</th>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">What it catches</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">Protocol</td>
+                <td class="px-4 py-2.5 text-gray-600">12</td>
+                <td class="px-4 py-2.5 text-gray-600">Missing names, invalid schemas, malformed annotations</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">Quality</td>
+                <td class="px-4 py-2.5 text-gray-600">11</td>
+                <td class="px-4 py-2.5 text-gray-600">Vague descriptions, missing parameter docs, naming inconsistencies</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">Security</td>
+                <td class="px-4 py-2.5 text-gray-600">6</td>
+                <td class="px-4 py-2.5 text-gray-600">Annotation mismatches, prompt injection, SQL injection, data exfiltration</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">LLM</td>
+                <td class="px-4 py-2.5 text-gray-600">5+</td>
+                <td class="px-4 py-2.5 text-gray-600">Description confusion, wrong tool selection, argument hallucination, overlap ambiguity, unsafe activation</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- How Tool Selection Works -->
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold mb-4" id="how-tool-selection-works">How Tool Selection Works</h2>
+        <ol class="list-decimal list-inside space-y-2 text-gray-700">
+          <li><strong>Scenario generation</strong> &mdash; for each tool, the LLM generates a realistic user request that should trigger that tool.</li>
+          <li><strong>Tool selection test</strong> &mdash; the scenario is sent to the LLM along with all tool definitions using native function-calling. The LLM picks which tool to use.</li>
+          <li><strong>Verdict</strong> &mdash; <span class="text-green-700 font-medium">PASS</span> if the correct tool is selected; <span class="text-yellow-600 font-medium">WARN</span> if a valid prerequisite tool is chosen; <span class="text-red-600 font-medium">FAIL</span> if there is genuine confusion.</li>
+        </ol>
+        <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+          <strong>Important:</strong> The LLM is only asked which tool to select. No tool is ever executed during evaluation.
+        </div>
+      </section>
+
+      <!-- LLM Checks Detail -->
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold mb-4" id="llm-checks-detail">LLM Checks Detail</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">Check</th>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">What it does</th>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">Why it matters</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">Description Clarity</td>
+                <td class="px-4 py-2.5 text-gray-600">LLM rates description clarity on a 1&ndash;10 scale</td>
+                <td class="px-4 py-2.5 text-gray-600">If the LLM can't understand the description, no agent can use it</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">Tool Selection</td>
+                <td class="px-4 py-2.5 text-gray-600">Auto-generates a scenario and asks the LLM to pick the right tool</td>
+                <td class="px-4 py-2.5 text-gray-600">Tests whether tools are distinguishable from each other</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">Argument Generation</td>
+                <td class="px-4 py-2.5 text-gray-600">LLM generates arguments and validates them against the schema</td>
+                <td class="px-4 py-2.5 text-gray-600">Catches unclear parameter schemas that lead to invalid inputs</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">Overlap Disambiguation</td>
+                <td class="px-4 py-2.5 text-gray-600">For overlapping tool pairs, tests if the LLM can tell them apart</td>
+                <td class="px-4 py-2.5 text-gray-600">Surfaces tools with similar descriptions that confuse agents</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">Safety Resistance</td>
+                <td class="px-4 py-2.5 text-gray-600">Sends benign prompts and checks if the LLM avoids destructive tools</td>
+                <td class="px-4 py-2.5 text-gray-600">Prevents accidental misuse of dangerous operations</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Scoring -->
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold mb-4" id="scoring">Scoring</h2>
+        <p class="text-gray-700 mb-4">Each layer is scored 0&ndash;100 based on check results weighted by severity:</p>
+        <div class="overflow-x-auto mb-4">
+          <table class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden max-w-md">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">Severity</th>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">Weight</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr>
+                <td class="px-4 py-2.5 text-red-700 font-medium">Critical</td>
+                <td class="px-4 py-2.5 text-gray-600">5.0</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-orange-600 font-medium">High</td>
+                <td class="px-4 py-2.5 text-gray-600">3.0</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-yellow-600 font-medium">Medium</td>
+                <td class="px-4 py-2.5 text-gray-600">2.0</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-blue-600 font-medium">Low</td>
+                <td class="px-4 py-2.5 text-gray-600">1.0</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-gray-500 font-medium">Info</td>
+                <td class="px-4 py-2.5 text-gray-600">0.5</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-gray-700">The overall score is a weighted combination of all active layers. The gate threshold is <strong>70.0</strong>. Critical failures in the protocol or security layers force gate failure regardless of the overall score.</p>
+      </section>
+
+      <!-- False Positives -->
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold mb-4" id="false-positives">False Positives</h2>
+        <ul class="list-disc list-inside space-y-2 text-gray-700">
+          <li>Mark any failure as a false positive with a justification</li>
+          <li>Persisted in report metadata and survive re-runs</li>
+          <li>Keyed by <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">{layer}:{tool_name}:{check_id}</code></li>
+          <li>Displayed with strikethrough text and a purple <span class="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded">FP</span> badge in the UI</li>
+        </ul>
+      </section>
+
+      <!-- Export -->
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold mb-4" id="export">Export</h2>
+        <p class="text-gray-700 mb-3">Download tools and evaluation results as JSON, YAML, or PDF. Selectable sections include:</p>
+        <ul class="list-disc list-inside space-y-1 text-gray-700">
+          <li>Tool overview</li>
+          <li>Parameter details</li>
+          <li>Raw schemas</li>
+          <li>Scores</li>
+          <li>Layer results</li>
+          <li>False positives</li>
+        </ul>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-200 py-10 px-6 bg-gray-50">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+      <div class="flex items-center gap-2 font-medium text-gray-700">
+        <svg class="w-5 h-5 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        MCP Lens
+      </div>
+      <div class="flex gap-6">
+        <a href="getting-started.html" class="hover:text-brand-600">Docs</a>
+        <a href="api-reference.html" class="hover:text-brand-600">API</a>
+        <a href="cli.html" class="hover:text-brand-600">CLI</a>
+        <a href="https://github.com/devninja-in/mcp-lens" class="hover:text-brand-600" target="_blank">GitHub</a>
+      </div>
+      <p>Apache 2.0 License</p>
+    </div>
+  </footer>
+
+</body>
+</html>

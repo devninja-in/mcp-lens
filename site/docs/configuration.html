@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuration - MCP Lens</title>
+  <meta name="description" content="Configure MCP Lens environment variables, authentication modes, server settings, and LLM providers.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e' }
+          },
+          fontFamily: {
+            sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'SF Mono', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .gradient-bg { background: linear-gradient(135deg, #0c4a6e 0%, #0284c7 50%, #0ea5e9 100%); }
+    .code-block { background: #0f172a; color: #e0f2fe; border-radius: 0.5rem; padding: 1.25rem; overflow-x: auto; font-size: 0.875rem; line-height: 1.7; }
+    .code-block .comment { color: #7dd3fc; }
+    .code-block .command { color: #bae6fd; }
+  </style>
+</head>
+<body class="bg-white text-gray-900 antialiased">
+
+  <!-- Nav -->
+  <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-gray-200">
+    <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+      <a href="../index.html" class="flex items-center gap-2 font-bold text-lg text-brand-700">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        MCP Lens
+      </a>
+      <div class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
+        <a href="getting-started.html" class="hover:text-brand-600">Getting Started</a>
+        <a href="configuration.html" class="text-brand-600 font-semibold">Configuration</a>
+        <a href="evaluation.html" class="hover:text-brand-600">Evaluation</a>
+        <a href="api-reference.html" class="hover:text-brand-600">API</a>
+        <a href="cli.html" class="hover:text-brand-600">CLI</a>
+        <a href="architecture.html" class="hover:text-brand-600">Architecture</a>
+        <a href="https://github.com/devninja-in/mcp-lens" class="hover:text-brand-600" target="_blank">GitHub</a>
+      </div>
+      <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="md:hidden p-2 text-gray-600">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden border-t border-gray-100 bg-white px-6 py-3 space-y-2 text-sm font-medium text-gray-600">
+      <a href="getting-started.html" class="block py-1 hover:text-brand-600">Getting Started</a>
+      <a href="configuration.html" class="block py-1 text-brand-600 font-semibold">Configuration</a>
+      <a href="evaluation.html" class="block py-1 hover:text-brand-600">Evaluation</a>
+      <a href="api-reference.html" class="block py-1 hover:text-brand-600">API</a>
+      <a href="cli.html" class="block py-1 hover:text-brand-600">CLI</a>
+      <a href="architecture.html" class="block py-1 hover:text-brand-600">Architecture</a>
+      <a href="https://github.com/devninja-in/mcp-lens" class="block py-1 hover:text-brand-600" target="_blank">GitHub</a>
+    </div>
+  </nav>
+
+  <!-- Docs Layout -->
+  <div class="max-w-6xl mx-auto px-6 py-10 flex gap-10">
+
+    <!-- Sidebar -->
+    <aside class="hidden md:block w-56 shrink-0">
+      <nav class="sticky top-24 space-y-1 text-sm">
+        <h4 class="font-semibold text-gray-900 mb-3">Documentation</h4>
+        <a href="getting-started.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">Getting Started</a>
+        <a href="configuration.html" class="block px-3 py-1.5 rounded-md bg-brand-50 text-brand-700 font-medium">Configuration</a>
+        <a href="evaluation.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">Evaluation</a>
+        <a href="api-reference.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">API Reference</a>
+        <a href="cli.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">CLI</a>
+        <a href="architecture.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900">Architecture</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="min-w-0 flex-1">
+      <h1 class="text-3xl font-bold mb-2">Configuration</h1>
+      <p class="text-gray-500 mb-8">Environment variables, authentication modes, server settings, and LLM provider setup.</p>
+
+      <!-- Environment Variables -->
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold mb-4" id="environment-variables">Environment Variables</h2>
+        <p class="text-gray-700 mb-3">Copy <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">.env.example</code> to <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">.env</code>:</p>
+        <div class="code-block">
+          BACKEND_PORT=5002<br>
+          FRONTEND_PORT=5173<br>
+          <span class="comment"># MCP_LENS_API_KEY=your-secret-api-key</span><br>
+          <span class="comment"># DATABASE_URL=sqlite+aiosqlite:///mcp_secrets.db</span><br>
+          <span class="comment"># PERSIST_OAUTH_TOKENS=true</span>
+        </div>
+      </section>
+
+      <!-- Authentication Modes -->
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold mb-4" id="authentication-modes">Authentication Modes</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">Mode</th>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">Description</th>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">Config</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">None</td>
+                <td class="px-4 py-2.5 text-gray-600">No authentication</td>
+                <td class="px-4 py-2.5"><code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">auth: false</code></td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">Bearer token</td>
+                <td class="px-4 py-2.5 text-gray-600">Static JWT/token</td>
+                <td class="px-4 py-2.5"><code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">auth_mode: bearer_token</code></td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">API key</td>
+                <td class="px-4 py-2.5 text-gray-600">Static key</td>
+                <td class="px-4 py-2.5"><code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">auth_mode: api_key</code></td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">OAuth</td>
+                <td class="px-4 py-2.5 text-gray-600">OAuth 2.0 authorization code</td>
+                <td class="px-4 py-2.5"><code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">auth_mode: oauth</code></td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5 text-gray-900 font-medium">DCR</td>
+                <td class="px-4 py-2.5 text-gray-600">Dynamic Client Registration + OAuth</td>
+                <td class="px-4 py-2.5"><code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">auth_mode: dcr</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-sm text-gray-500 mt-3">Bearer tokens and API keys are encrypted at rest (Fernet/AES-128-CBC). Set <code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">MCP_LENS_ENCRYPTION_KEY</code> in <code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">.env</code>.</p>
+      </section>
+
+      <!-- Server Config Fields -->
+      <section class="mb-10">
+        <h2 class="text-xl font-semibold mb-4" id="server-config-fields">Server Config Fields</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">Field</th>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">Type</th>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">Default</th>
+                <th class="text-left px-4 py-3 font-semibold text-gray-700 border-b">Description</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr>
+                <td class="px-4 py-2.5"><code class="text-sm">url</code></td>
+                <td class="px-4 py-2.5 text-gray-600">string</td>
+                <td class="px-4 py-2.5 text-gray-600 italic">required</td>
+                <td class="px-4 py-2.5 text-gray-600">MCP server endpoint URL</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="text-sm">transport</code></td>
+                <td class="px-4 py-2.5 text-gray-600">string</td>
+                <td class="px-4 py-2.5"><code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">streamable_http</code></td>
+                <td class="px-4 py-2.5 text-gray-600">Transport protocol</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="text-sm">auth</code></td>
+                <td class="px-4 py-2.5 text-gray-600">bool</td>
+                <td class="px-4 py-2.5"><code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">false</code></td>
+                <td class="px-4 py-2.5 text-gray-600">Whether auth is required</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="text-sm">auth_mode</code></td>
+                <td class="px-4 py-2.5 text-gray-600">string</td>
+                <td class="px-4 py-2.5"><code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">null</code></td>
+                <td class="px-4 py-2.5 text-gray-600">Auth type</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="text-sm">ssl_verify</code></td>
+                <td class="px-4 py-2.5 text-gray-600">bool</td>
+                <td class="px-4 py-2.5"><code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">true</code></td>
+                <td class="px-4 py-2.5 text-gray-600">Verify SSL certificates</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="text-sm">timeout</code></td>
+                <td class="px-4 py-2.5 text-gray-600">int</td>
+                <td class="px-4 py-2.5"><code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">30</code></td>
+                <td class="px-4 py-2.5 text-gray-600">Connection timeout (seconds)</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="text-sm">description</code></td>
+                <td class="px-4 py-2.5 text-gray-600">string</td>
+                <td class="px-4 py-2.5"><code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">""</code></td>
+                <td class="px-4 py-2.5 text-gray-600">Human-readable description</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="text-sm">oauth</code></td>
+                <td class="px-4 py-2.5 text-gray-600">object</td>
+                <td class="px-4 py-2.5"><code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">null</code></td>
+                <td class="px-4 py-2.5 text-gray-600">OAuth config</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="text-sm">api_key_config</code></td>
+                <td class="px-4 py-2.5 text-gray-600">object</td>
+                <td class="px-4 py-2.5"><code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs">null</code></td>
+                <td class="px-4 py-2.5 text-gray-600">API key config</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- LLM Configuration -->
+      <section class="mb-10" id="llm-config">
+        <h2 class="text-xl font-semibold mb-4">LLM Configuration</h2>
+        <p class="text-gray-700 mb-3">Create <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">llm.json</code> (copy <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">llm.json.example</code>):</p>
+        <div class="code-block mb-4">
+          {<br>
+          &nbsp;&nbsp;"default": "gemini-flash",<br>
+          &nbsp;&nbsp;"configs": {<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;"gemini-flash": {<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"provider": "vertexai",<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"model": "gemini-2.5-flash",<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"credentials_env": "GOOGLE_APPLICATION_CREDENTIALS"<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;},<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;"claude": {<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"provider": "anthropic",<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"model": "claude-sonnet-4-20250514",<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"api_key_env": "ANTHROPIC_API_KEY"<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+          &nbsp;&nbsp;}<br>
+          }
+        </div>
+
+        <h3 class="text-lg font-medium mb-3 mt-6">Environment Variable Convention</h3>
+        <p class="text-gray-700 mb-3">Fields ending in <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">_env</code> reference environment variable names, not literal values. For example, <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">"api_key_env": "ANTHROPIC_API_KEY"</code> means MCP Lens reads the actual key from the <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">ANTHROPIC_API_KEY</code> environment variable at runtime.</p>
+
+        <h3 class="text-lg font-medium mb-3 mt-6">Vertex AI</h3>
+        <p class="text-gray-700 mb-3">For Vertex AI providers (<code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">vertexai</code>, <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">anthropic-vertex</code>), <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">project</code> and <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">location</code> are optional. If omitted, they are inferred from the service account credentials or application default credentials.</p>
+
+        <h3 class="text-lg font-medium mb-3 mt-6">Supported Providers</h3>
+        <div class="flex flex-wrap gap-2">
+          <span class="px-3 py-1 bg-gray-100 rounded text-sm font-medium text-gray-700">openai</span>
+          <span class="px-3 py-1 bg-gray-100 rounded text-sm font-medium text-gray-700">anthropic</span>
+          <span class="px-3 py-1 bg-gray-100 rounded text-sm font-medium text-gray-700">vertexai</span>
+          <span class="px-3 py-1 bg-gray-100 rounded text-sm font-medium text-gray-700">anthropic-vertex</span>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-200 py-10 px-6 bg-gray-50">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+      <div class="flex items-center gap-2 font-medium text-gray-700">
+        <svg class="w-5 h-5 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        MCP Lens
+      </div>
+      <div class="flex gap-6">
+        <a href="getting-started.html" class="hover:text-brand-600">Docs</a>
+        <a href="api-reference.html" class="hover:text-brand-600">API</a>
+        <a href="cli.html" class="hover:text-brand-600">CLI</a>
+        <a href="https://github.com/devninja-in/mcp-lens" class="hover:text-brand-600" target="_blank">GitHub</a>
+      </div>
+      <p>Apache 2.0 License</p>
+    </div>
+  </footer>
+
+</body>
+</html>
