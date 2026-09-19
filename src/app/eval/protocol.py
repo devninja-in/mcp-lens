@@ -4,6 +4,13 @@ import logging
 import re
 
 from .models import CheckResult, LayerResult, Severity, Status, ToolResult
+from .registry import (
+    RuleConfig,
+    apply_severity_override,
+    get_effective_config,
+    get_rules_for_layer,
+    register_rule,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -14,26 +21,32 @@ _CAMEL_CASE = re.compile(r"^[a-z][a-zA-Z0-9]*$")
 _PASCAL_CASE = re.compile(r"^[A-Z][a-zA-Z0-9]*$")
 
 
-def check_tool_protocol(tool: dict) -> list[CheckResult]:
-    checks = [
-        _check_name_present(tool),
-        _check_name_valid(tool),
-        _check_description_present(tool),
-        _check_input_schema_structure(tool),
-    ]
-    checks.extend(_check_schema_properties(tool))
-    checks.append(_check_required_valid(tool))
-    checks.extend(_check_annotation_types(tool))
-    checks.append(_check_additional_properties(tool))
+def check_tool_protocol(tool: dict, db_configs: dict[str, RuleConfig] | None = None) -> list[CheckResult]:
+    if db_configs is None:
+        db_configs = {}
+    rules = get_rules_for_layer("protocol")
+    checks: list[CheckResult] = []
+    for rule_id, rule_def in rules.items():
+        enabled, severity, params = get_effective_config(rule_def, db_configs.get(rule_id))
+        if not enabled:
+            continue
+        result = rule_def.check_fn(tool, params=params)
+        if isinstance(result, list):
+            for c in result:
+                apply_severity_override(c, severity)
+                checks.append(c)
+        else:
+            apply_severity_override(result, severity)
+            checks.append(result)
     return checks
 
 
-def check_protocol_all(tools: list[dict]) -> LayerResult:
+def check_protocol_all(tools: list[dict], db_configs: dict[str, RuleConfig] | None = None) -> LayerResult:
     logger.info("Running protocol compliance checks on %d tools", len(tools))
     results = []
     for tool in tools:
         name = tool.get("name", "<unnamed>")
-        checks = check_tool_protocol(tool)
+        checks = check_tool_protocol(tool, db_configs)
         for c in checks:
             c.tool_name = name
         tr = ToolResult(tool_name=name, checks=checks)
@@ -44,7 +57,13 @@ def check_protocol_all(tools: list[dict]) -> LayerResult:
     return LayerResult(layer="protocol", tools=results)
 
 
-def _check_name_present(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="protocol.name_present",
+    layer="protocol",
+    description="Tool has a 'name' field (required by MCP spec)",
+    default_severity=Severity.CRITICAL,
+)
+def _check_name_present(tool: dict, params: dict | None = None) -> CheckResult:
     name = tool.get("name")
     if name is None:
         return CheckResult(
@@ -77,7 +96,13 @@ def _check_name_present(tool: dict) -> CheckResult:
     )
 
 
-def _check_name_valid(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="protocol.name_valid",
+    layer="protocol",
+    description="Tool name is non-empty and contains no spaces",
+    default_severity=Severity.CRITICAL,
+)
+def _check_name_valid(tool: dict, params: dict | None = None) -> CheckResult:
     name = tool.get("name", "")
     if not isinstance(name, str) or not name.strip():
         return CheckResult(
@@ -112,7 +137,13 @@ def _check_name_valid(tool: dict) -> CheckResult:
     )
 
 
-def _check_description_present(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="protocol.description_present",
+    layer="protocol",
+    description="Tool has a description for LLM agents",
+    default_severity=Severity.MEDIUM,
+)
+def _check_description_present(tool: dict, params: dict | None = None) -> CheckResult:
     desc = tool.get("description")
     if desc is None or (isinstance(desc, str) and not desc.strip()):
         return CheckResult(
@@ -148,7 +179,13 @@ def _check_description_present(tool: dict) -> CheckResult:
     )
 
 
-def _check_input_schema_structure(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="protocol.input_schema_valid",
+    layer="protocol",
+    description="inputSchema is a valid JSON Schema object",
+    default_severity=Severity.HIGH,
+)
+def _check_input_schema_structure(tool: dict, params: dict | None = None) -> CheckResult:
     schema = tool.get("inputSchema")
     if schema is None:
         return CheckResult(
@@ -193,7 +230,13 @@ def _check_input_schema_structure(tool: dict) -> CheckResult:
     )
 
 
-def _check_schema_properties(tool: dict) -> list[CheckResult]:
+@register_rule(
+    rule_id="protocol.properties_valid",
+    layer="protocol",
+    description="All schema properties have valid type definitions",
+    default_severity=Severity.HIGH,
+)
+def _check_schema_properties(tool: dict, params: dict | None = None) -> list[CheckResult]:
     schema = tool.get("inputSchema")
     if not isinstance(schema, dict):
         return []
@@ -268,7 +311,13 @@ def _check_schema_properties(tool: dict) -> list[CheckResult]:
     return results
 
 
-def _check_required_valid(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="protocol.required_valid",
+    layer="protocol",
+    description="Required fields reference valid properties",
+    default_severity=Severity.HIGH,
+)
+def _check_required_valid(tool: dict, params: dict | None = None) -> CheckResult:
     schema = tool.get("inputSchema")
     if not isinstance(schema, dict):
         return CheckResult(
@@ -319,7 +368,13 @@ def _check_required_valid(tool: dict) -> CheckResult:
     )
 
 
-def _check_annotation_types(tool: dict) -> list[CheckResult]:
+@register_rule(
+    rule_id="protocol.annotation_types_valid",
+    layer="protocol",
+    description="Annotation hint values are correctly typed as booleans",
+    default_severity=Severity.MEDIUM,
+)
+def _check_annotation_types(tool: dict, params: dict | None = None) -> list[CheckResult]:
     annotations = tool.get("annotations")
     if not isinstance(annotations, dict):
         return [
@@ -365,7 +420,13 @@ def _check_annotation_types(tool: dict) -> list[CheckResult]:
     return results
 
 
-def _check_additional_properties(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="protocol.additional_properties",
+    layer="protocol",
+    description="inputSchema defines additionalProperties for strictness",
+    default_severity=Severity.LOW,
+)
+def _check_additional_properties(tool: dict, params: dict | None = None) -> CheckResult:
     schema = tool.get("inputSchema")
     if not isinstance(schema, dict):
         return CheckResult(

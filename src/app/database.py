@@ -72,6 +72,16 @@ class GroundTruth(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
+class RuleConfigRow(Base):
+    __tablename__ = "rule_configs"
+
+    rule_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    severity_override: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    config_data: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
 _engine = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 
@@ -247,6 +257,86 @@ async def delete_ground_truth(server_name: str) -> None:
         existing = await session.get(GroundTruth, server_name)
         if existing:
             await session.delete(existing)
+
+
+async def get_all_rule_configs() -> dict[str, dict]:
+    async with _get_session() as session:
+        result = await session.execute(select(RuleConfigRow))
+        rows = result.scalars().all()
+        configs = {}
+        for row in rows:
+            configs[row.rule_id] = {
+                "enabled": row.enabled,
+                "severity_override": row.severity_override,
+                "config_data": json.loads(row.config_data) if row.config_data else None,
+            }
+        return configs
+
+
+async def get_rule_config(rule_id: str) -> dict | None:
+    async with _get_session() as session:
+        result = await session.get(RuleConfigRow, rule_id)
+        if result is None:
+            return None
+        return {
+            "enabled": result.enabled,
+            "severity_override": result.severity_override,
+            "config_data": json.loads(result.config_data) if result.config_data else None,
+        }
+
+
+async def set_rule_config(
+    rule_id: str,
+    enabled: bool = True,
+    severity_override: str | None = None,
+    config_data: dict | None = None,
+) -> None:
+    async with _get_session() as session, session.begin():
+        existing = await session.get(RuleConfigRow, rule_id)
+        now = datetime.now(UTC)
+        if existing:
+            existing.enabled = enabled
+            existing.severity_override = severity_override
+            existing.config_data = json.dumps(config_data) if config_data else None
+            existing.updated_at = now
+        else:
+            session.add(
+                RuleConfigRow(
+                    rule_id=rule_id,
+                    enabled=enabled,
+                    severity_override=severity_override,
+                    config_data=json.dumps(config_data) if config_data else None,
+                    updated_at=now,
+                )
+            )
+
+
+async def delete_all_rule_configs() -> int:
+    async with _get_session() as session, session.begin():
+        result = await session.execute(select(RuleConfigRow))
+        rows = result.scalars().all()
+        count = len(rows)
+        for row in rows:
+            await session.delete(row)
+        return count
+
+
+async def seed_rule_configs(rule_defs: list[dict]) -> int:
+    async with _get_session() as session:
+        result = await session.execute(select(RuleConfigRow))
+        existing = {row.rule_id for row in result.scalars().all()}
+
+    seeded = 0
+    for rd in rule_defs:
+        if rd["rule_id"] not in existing:
+            await set_rule_config(
+                rule_id=rd["rule_id"],
+                enabled=rd.get("default_enabled", True),
+                severity_override=None,
+                config_data=None,
+            )
+            seeded += 1
+    return seeded
 
 
 async def _migrate_tokens_json() -> None:

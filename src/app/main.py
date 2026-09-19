@@ -9,9 +9,9 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import get_frontend_port
-from .database import check_db_health, dispose_db, init_db
+from .database import check_db_health, dispose_db, init_db, seed_rule_configs
 from .middleware import ApiKeyMiddleware
-from .routes import auth_routes, llm, servers, tools
+from .routes import auth_routes, llm, rules, servers, tools
 
 _VERSION = "0.1.0"
 
@@ -35,6 +35,11 @@ _setup_logging()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    from .eval.registry import get_all_rule_defs
+
+    seeded = await seed_rule_configs(get_all_rule_defs())
+    if seeded:
+        logger.info("Seeded %d new rule configs", seeded)
     logger.info("MCP Lens %s started", _VERSION)
     yield
     await dispose_db()
@@ -57,6 +62,7 @@ app.include_router(auth_routes.router)
 app.include_router(auth_routes.oauth_callback_router)
 app.include_router(tools.router)
 app.include_router(llm.router)
+app.include_router(rules.router)
 
 
 @app.exception_handler(Exception)

@@ -216,3 +216,52 @@ export function downloadToolsTemplate(name: string): void {
 export async function deleteUploadedTools(name: string): Promise<{ success: boolean }> {
   return fetchJson(`/servers/${encodeURIComponent(name)}/tools/uploaded`, { method: 'DELETE' })
 }
+
+// --- Rules API ---
+
+export interface RuleParamSchema {
+  type: string
+  default: unknown
+  description: string
+}
+
+export interface RuleInfo {
+  rule_id: string
+  layer: string
+  description: string
+  default_severity: string
+  default_enabled: boolean
+  params_schema: Record<string, RuleParamSchema>
+  enabled: boolean
+  severity_override: string | null
+  params: Record<string, unknown>
+}
+
+export async function getRules(): Promise<{ rules: RuleInfo[]; total: number }> {
+  return fetchJson('/rules')
+}
+
+export async function updateRule(
+  ruleId: string,
+  update: { enabled?: boolean; severity_override?: string | null; params?: Record<string, unknown> },
+): Promise<{ success: boolean }> {
+  return fetchJson(`/rules/${encodeURIComponent(ruleId)}`, {
+    method: 'PUT',
+    body: JSON.stringify(update),
+  })
+}
+
+export async function resetRules(): Promise<{ success: boolean; reset_count: number }> {
+  return fetchJson('/rules/reset', { method: 'POST' })
+}
+
+export async function exportRules(): Promise<{ version: string; exported_at: string; rules: unknown[] }> {
+  return fetchJson('/rules/export')
+}
+
+export async function importRules(data: { version: string; rules: unknown[] }): Promise<{ success: boolean; imported_count: number; warnings: string[] }> {
+  return fetchJson('/rules/import', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}

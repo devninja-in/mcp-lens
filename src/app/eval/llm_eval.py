@@ -14,6 +14,7 @@ from typing import Any
 
 from .models import CheckResult, LayerResult, Severity, Status, ToolResult
 from .overlap import detect_overlaps
+from .registry import ParamDef, RuleConfig, get_effective_config, register_rule
 from .security import classify_tool_action
 
 logger = logging.getLogger(__name__)
@@ -24,12 +25,27 @@ async def _ask_llm_text(adapter: Any, prompt: str) -> str:
     return result
 
 
+@register_rule(
+    rule_id="llm.description_clarity",
+    layer="llm",
+    description="LLM rates tool description clarity (1-10 scale)",
+    default_severity=Severity.MEDIUM,
+    is_async=True,
+    params_schema={
+        "pass_threshold": ParamDef(type="int", default=8, description="Rating >= this is PASS"),
+        "warn_threshold": ParamDef(type="int", default=5, description="Rating >= this is WARN (below is FAIL)"),
+    },
+)
 async def _check_description_clarity(
     tools: list[dict],
     adapter: Any,
     server_description: str = "",
     ground_truth: list[dict] | None = None,
+    params: dict | None = None,
 ) -> list[ToolResult]:
+    params = params or {}
+    pass_threshold = params.get("pass_threshold", 8)
+    warn_threshold = params.get("warn_threshold", 5)
     logger.info("Running description clarity check on %d tools", len(tools))
     results = []
     for tool in tools:
@@ -75,9 +91,9 @@ async def _check_description_clarity(
             reason_match = re.search(r'"reason"\s*:\s*"([^"]*)"', response)
             reason = reason_match.group(1) if reason_match else "Could not parse LLM response"
 
-            if rating >= 8:
+            if rating >= pass_threshold:
                 status, severity = Status.PASS, Severity.INFO
-            elif rating >= 5:
+            elif rating >= warn_threshold:
                 status, severity = Status.WARN, Severity.MEDIUM
             else:
                 status, severity = Status.FAIL, Severity.HIGH
@@ -218,11 +234,19 @@ async def _suggest_improved_description(
         return None
 
 
+@register_rule(
+    rule_id="llm.tool_selection",
+    layer="llm",
+    description="LLM correctly selects the right tool for generated scenarios",
+    default_severity=Severity.HIGH,
+    is_async=True,
+)
 async def _check_tool_selection(
     tools: list[dict],
     adapter: Any,
     server_description: str = "",
     ground_truth: list[dict] | None = None,
+    params: dict | None = None,
 ) -> list[ToolResult]:
     logger.info("Running tool selection check on %d tools", len(tools))
     results = []
@@ -482,12 +506,20 @@ async def _check_tool_selection(
     return results
 
 
+@register_rule(
+    rule_id="llm.arg_generation",
+    layer="llm",
+    description="LLM generates valid arguments with correct types and required fields",
+    default_severity=Severity.HIGH,
+    is_async=True,
+)
 async def _check_arg_generation(
     tools: list[dict],
     adapter: Any,
     server_description: str = "",
     ground_truth: list[dict] | None = None,
     selections_cache: dict[str, dict] | None = None,
+    params: dict | None = None,
 ) -> list[ToolResult]:
     logger.info("Running argument generation check")
     results = []
@@ -675,13 +707,28 @@ def _check_type(value: Any, expected: str) -> bool:
     return True
 
 
+@register_rule(
+    rule_id="llm.tool_disambiguation",
+    layer="llm",
+    description="LLM can distinguish between overlapping tools",
+    default_severity=Severity.HIGH,
+    is_async=True,
+    params_schema={
+        "overlap_threshold": ParamDef(
+            type="float", default=0.4, description="Similarity threshold for overlap detection"
+        ),
+    },
+)
 async def _check_tool_disambiguation(
     tools: list[dict],
     adapter: Any,
     server_description: str = "",
     ground_truth: list[dict] | None = None,
+    params: dict | None = None,
 ) -> list[ToolResult]:
-    overlaps = detect_overlaps(tools, threshold=0.4)
+    params = params or {}
+    threshold = params.get("overlap_threshold", 0.4)
+    overlaps = detect_overlaps(tools, threshold=threshold)
     if not overlaps:
         logger.info("No tool overlaps detected, skipping disambiguation check")
         return []
@@ -821,11 +868,19 @@ async def _check_tool_disambiguation(
     return results
 
 
+@register_rule(
+    rule_id="llm.safety_resistance",
+    layer="llm",
+    description="LLM does not select destructive tools for benign requests",
+    default_severity=Severity.CRITICAL,
+    is_async=True,
+)
 async def _check_safety_resistance(
     tools: list[dict],
     adapter: Any,
     server_description: str = "",
     ground_truth: list[dict] | None = None,
+    params: dict | None = None,
 ) -> list[ToolResult]:
     results = []
     dangerous_tools = [t for t in tools if classify_tool_action(t) in ("destructive", "write", "external_side_effect")]
@@ -933,50 +988,90 @@ def _build_selections_cache(tool_results: list[ToolResult]) -> dict[str, dict]:
     return cache
 
 
+def _is_rule_enabled(rule_id: str, db_configs: dict[str, RuleConfig] | None) -> tuple[bool, dict]:
+    from .registry import RULE_REGISTRY
+
+    rule_def = RULE_REGISTRY.get(rule_id)
+    if not rule_def:
+        return True, {}
+    config = (db_configs or {}).get(rule_id)
+    enabled, _severity, params = get_effective_config(rule_def, config)
+    return enabled, params
+
+
 async def check_llm_all(
     tools: list[dict],
     adapter: Any,
     server_description: str = "",
     ground_truth: list[dict] | None = None,
+    db_configs: dict[str, RuleConfig] | None = None,
 ) -> LayerResult:
     logger.info("Starting LLM evaluation layer for %d tools", len(tools))
     if ground_truth:
         logger.info("Ground truth loaded: %d scenarios", len(ground_truth))
     all_tool_results: list[ToolResult] = []
 
-    for check_fn in [_check_description_clarity]:
+    enabled, params = _is_rule_enabled("llm.description_clarity", db_configs)
+    if enabled:
         try:
-            all_tool_results.extend(await check_fn(tools, adapter, server_description, ground_truth=ground_truth))
+            all_tool_results.extend(
+                await _check_description_clarity(
+                    tools, adapter, server_description, ground_truth=ground_truth, params=params
+                )
+            )
         except Exception as e:
-            logger.error("LLM check %s crashed: %s", check_fn.__name__, e, exc_info=True)
+            logger.error("LLM check _check_description_clarity crashed: %s", e, exc_info=True)
 
     selections_cache: dict[str, dict] = {}
-    try:
-        selection_results = await _check_tool_selection(tools, adapter, server_description, ground_truth=ground_truth)
-        all_tool_results.extend(selection_results)
-        selections_cache = _build_selections_cache(selection_results)
-        logger.info("Cached %d tool selections for arg generation reuse", len(selections_cache))
-    except Exception as e:
-        logger.error("LLM check _check_tool_selection crashed: %s", e, exc_info=True)
-
-    try:
-        all_tool_results.extend(
-            await _check_arg_generation(
-                tools,
-                adapter,
-                server_description,
-                ground_truth=ground_truth,
-                selections_cache=selections_cache,
-            )
-        )
-    except Exception as e:
-        logger.error("LLM check _check_arg_generation crashed: %s", e, exc_info=True)
-
-    for check_fn in [_check_tool_disambiguation, _check_safety_resistance]:
+    enabled, params = _is_rule_enabled("llm.tool_selection", db_configs)
+    if enabled:
         try:
-            all_tool_results.extend(await check_fn(tools, adapter, server_description, ground_truth=ground_truth))
+            selection_results = await _check_tool_selection(
+                tools, adapter, server_description, ground_truth=ground_truth, params=params
+            )
+            all_tool_results.extend(selection_results)
+            selections_cache = _build_selections_cache(selection_results)
+            logger.info("Cached %d tool selections for arg generation reuse", len(selections_cache))
         except Exception as e:
-            logger.error("LLM check %s crashed: %s", check_fn.__name__, e, exc_info=True)
+            logger.error("LLM check _check_tool_selection crashed: %s", e, exc_info=True)
+
+    enabled, params = _is_rule_enabled("llm.arg_generation", db_configs)
+    if enabled:
+        try:
+            all_tool_results.extend(
+                await _check_arg_generation(
+                    tools,
+                    adapter,
+                    server_description,
+                    ground_truth=ground_truth,
+                    selections_cache=selections_cache,
+                    params=params,
+                )
+            )
+        except Exception as e:
+            logger.error("LLM check _check_arg_generation crashed: %s", e, exc_info=True)
+
+    enabled, params = _is_rule_enabled("llm.tool_disambiguation", db_configs)
+    if enabled:
+        try:
+            all_tool_results.extend(
+                await _check_tool_disambiguation(
+                    tools, adapter, server_description, ground_truth=ground_truth, params=params
+                )
+            )
+        except Exception as e:
+            logger.error("LLM check _check_tool_disambiguation crashed: %s", e, exc_info=True)
+
+    enabled, params = _is_rule_enabled("llm.safety_resistance", db_configs)
+    if enabled:
+        try:
+            all_tool_results.extend(
+                await _check_safety_resistance(
+                    tools, adapter, server_description, ground_truth=ground_truth, params=params
+                )
+            )
+        except Exception as e:
+            logger.error("LLM check _check_safety_resistance crashed: %s", e, exc_info=True)
 
     merged: dict[str, ToolResult] = {}
     for tr in all_tool_results:
