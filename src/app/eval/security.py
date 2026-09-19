@@ -4,6 +4,14 @@ import logging
 import re
 
 from .models import CheckResult, LayerResult, Severity, Status, ToolResult
+from .registry import (
+    ParamDef,
+    RuleConfig,
+    apply_severity_override,
+    get_effective_config,
+    get_rules_for_layer,
+    register_rule,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +151,13 @@ def classify_tool_action(tool: dict) -> str:
     return "unknown"
 
 
-def _check_annotation_consistency(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="security.annotation_consistency",
+    layer="security",
+    description="Annotations match tool behavior (readOnlyHint vs destructive verbs)",
+    default_severity=Severity.CRITICAL,
+)
+def _check_annotation_consistency(tool: dict, params: dict | None = None) -> CheckResult:
     annotations = tool.get("annotations")
     if not isinstance(annotations, dict):
         return CheckResult(
@@ -217,7 +231,13 @@ def _check_annotation_consistency(tool: dict) -> CheckResult:
     )
 
 
-def _check_destructive_without_guard(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="security.destructive_guard",
+    layer="security",
+    description="Destructive tools have safety annotations defined",
+    default_severity=Severity.HIGH,
+)
+def _check_destructive_without_guard(tool: dict, params: dict | None = None) -> CheckResult:
     action = classify_tool_action(tool)
     if action != "destructive":
         return CheckResult(
@@ -250,7 +270,13 @@ def _check_destructive_without_guard(tool: dict) -> CheckResult:
     )
 
 
-def _check_prompt_injection_surface(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="security.prompt_injection",
+    layer="security",
+    description="Description does not contain prompt injection patterns",
+    default_severity=Severity.MEDIUM,
+)
+def _check_prompt_injection_surface(tool: dict, params: dict | None = None) -> CheckResult:
     desc = tool.get("description") or ""
     match = _INJECTION_PATTERNS.search(desc)
     if match:
@@ -276,7 +302,22 @@ def _check_prompt_injection_surface(tool: dict) -> CheckResult:
     )
 
 
-def _check_data_exfil_risk(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="security.data_exfil",
+    layer="security",
+    description="Parameters do not expose data exfiltration risk",
+    default_severity=Severity.MEDIUM,
+    params_schema={
+        "exfil_param_names": ParamDef(
+            type="list",
+            default=list(_EXFIL_PARAM_NAMES),
+            description="Parameter names flagged for exfiltration risk",
+        ),
+    },
+)
+def _check_data_exfil_risk(tool: dict, params: dict | None = None) -> CheckResult:
+    params = params or {}
+    exfil_names = set(params.get("exfil_param_names", _EXFIL_PARAM_NAMES))
     schema = tool.get("inputSchema")
     if not isinstance(schema, dict):
         return CheckResult(
@@ -293,7 +334,7 @@ def _check_data_exfil_risk(tool: dict) -> CheckResult:
             message="No properties to check for exfiltration risk",
         )
 
-    flagged = [p for p in props if p.lower() in _EXFIL_PARAM_NAMES]
+    flagged = [p for p in props if p.lower() in exfil_names]
     if flagged:
         return CheckResult(
             check_id="security.data_exfil",
@@ -320,7 +361,22 @@ def _check_data_exfil_risk(tool: dict) -> CheckResult:
     )
 
 
-def _check_sql_injection_surface(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="security.sql_injection",
+    layer="security",
+    description="Parameters do not expose SQL/command injection surface",
+    default_severity=Severity.HIGH,
+    params_schema={
+        "query_param_names": ParamDef(
+            type="list",
+            default=list(_QUERY_PARAM_NAMES),
+            description="Parameter names flagged for injection risk",
+        ),
+    },
+)
+def _check_sql_injection_surface(tool: dict, params: dict | None = None) -> CheckResult:
+    params = params or {}
+    query_names = set(params.get("query_param_names", _QUERY_PARAM_NAMES))
     schema = tool.get("inputSchema")
     if not isinstance(schema, dict):
         return CheckResult(
@@ -340,7 +396,7 @@ def _check_sql_injection_surface(tool: dict) -> CheckResult:
     for pname, pdef in props.items():
         if not isinstance(pdef, dict):
             continue
-        if pname.lower() not in _QUERY_PARAM_NAMES:
+        if pname.lower() not in query_names:
             continue
         if pdef.get("type") != "string":
             continue
@@ -372,7 +428,13 @@ def _check_sql_injection_surface(tool: dict) -> CheckResult:
     )
 
 
-def _check_broad_permissions(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="security.broad_permissions",
+    layer="security",
+    description="Description does not suggest overly broad permissions",
+    default_severity=Severity.HIGH,
+)
+def _check_broad_permissions(tool: dict, params: dict | None = None) -> CheckResult:
     desc = tool.get("description") or ""
     match = _BROAD_PERMISSION_PATTERNS.search(desc)
     if match:
@@ -398,23 +460,32 @@ def _check_broad_permissions(tool: dict) -> CheckResult:
     )
 
 
-def check_tool_security(tool: dict) -> list[CheckResult]:
-    return [
-        _check_annotation_consistency(tool),
-        _check_destructive_without_guard(tool),
-        _check_prompt_injection_surface(tool),
-        _check_data_exfil_risk(tool),
-        _check_sql_injection_surface(tool),
-        _check_broad_permissions(tool),
-    ]
+def check_tool_security(tool: dict, db_configs: dict[str, RuleConfig] | None = None) -> list[CheckResult]:
+    if db_configs is None:
+        db_configs = {}
+    rules = get_rules_for_layer("security")
+    checks: list[CheckResult] = []
+    for rule_id, rule_def in rules.items():
+        enabled, severity, params = get_effective_config(rule_def, db_configs.get(rule_id))
+        if not enabled:
+            continue
+        result = rule_def.check_fn(tool, params=params)
+        if isinstance(result, list):
+            for c in result:
+                apply_severity_override(c, severity)
+                checks.append(c)
+        else:
+            apply_severity_override(result, severity)
+            checks.append(result)
+    return checks
 
 
-def check_security_all(tools: list[dict]) -> LayerResult:
+def check_security_all(tools: list[dict], db_configs: dict[str, RuleConfig] | None = None) -> LayerResult:
     logger.info("Running security checks on %d tools", len(tools))
     results = []
     for tool in tools:
         name = tool.get("name", "<unnamed>")
-        checks = check_tool_security(tool)
+        checks = check_tool_security(tool, db_configs)
         for c in checks:
             c.tool_name = name
         tr = ToolResult(tool_name=name, checks=checks)

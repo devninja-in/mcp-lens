@@ -4,6 +4,7 @@ import ServerList from './components/ServerList'
 import ServerForm from './components/ServerForm'
 import ToolsViewer from './components/ToolsViewer'
 import AboutPage from './components/AboutPage'
+import RulesPage from './components/RulesPage'
 import Toast from './components/Toast'
 import * as api from './api'
 
@@ -17,7 +18,7 @@ export default function App() {
   const [viewingTools, setViewingTools] = useState<string | null>(null)
   const [initialTab, setInitialTab] = useState<'tools' | 'evaluate'>('tools')
   const [serversCache, setServersCache] = useState<Record<string, McpServerConfig>>({})
-  const [page, setPage] = useState<'servers' | 'about'>('servers')
+  const [page, setPage] = useState<'servers' | 'rules' | 'about'>('servers')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -92,16 +93,6 @@ export default function App() {
         </div>
         <nav className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
           <button
-            onClick={() => { setPage('servers'); setViewingTools(null) }}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              activePage === 'servers'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Servers
-          </button>
-          <button
             onClick={() => { setPage('about'); setViewingTools(null) }}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
               activePage === 'about'
@@ -110,6 +101,26 @@ export default function App() {
             }`}
           >
             About
+          </button>
+          <button
+            onClick={() => { setPage('rules'); setViewingTools(null) }}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              activePage === 'rules'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Rules
+          </button>
+          <button
+            onClick={() => { setPage('servers'); setViewingTools(null) }}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              activePage === 'servers'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Servers
           </button>
         </nav>
       </div>
@@ -127,6 +138,16 @@ export default function App() {
           onBack={() => setViewingTools(null)}
           onToast={handleToast}
         />
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </div>
+    )
+  }
+
+  if (page === 'rules') {
+    return (
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        {nav}
+        <RulesPage onToast={handleToast} />
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </div>
     )

@@ -11,6 +11,7 @@ from ..auth import clear_oauth_tokens
 from ..config import load_config, persist_oauth_tokens
 from ..database import (
     delete_ground_truth,
+    get_all_rule_configs,
     get_eval_report,
     get_ground_truth,
     save_eval_report,
@@ -28,12 +29,33 @@ from ..eval.overlap import detect_overlaps
 from ..eval.protocol import check_protocol_all
 from ..eval.quality import check_quality_all
 from ..eval.quality import evaluate_tools_compat as evaluate_tools
+from ..eval.registry import RuleConfig
+from ..eval.registry import Severity as RuleSeverity
 from ..eval.scoring import apply_scoring
 from ..eval.security import check_security_all
 from ..mcp_client import ReAuthRequiredError, mcp_initialize, mcp_list_tools
 from ..tools_store import delete_tools, load_tools, save_tools
 
 logger = logging.getLogger(__name__)
+
+
+async def _load_db_rule_configs() -> dict[str, RuleConfig]:
+    raw = await get_all_rule_configs()
+    configs: dict[str, RuleConfig] = {}
+    for rule_id, data in raw.items():
+        severity = None
+        if data.get("severity_override"):
+            try:
+                severity = RuleSeverity(data["severity_override"])
+            except ValueError:
+                severity = None
+        configs[rule_id] = RuleConfig(
+            rule_id=rule_id,
+            enabled=data.get("enabled", True),
+            severity_override=severity,
+            params=data.get("config_data") or {},
+        )
+    return configs
 
 
 def _check_from_dict(c: dict) -> CheckResult:
@@ -166,10 +188,11 @@ async def evaluate_full(name: str) -> dict:
 
     logger.info("Running full evaluation for server '%s' (%d tools)", name, len(tools))
 
+    db_configs = await _load_db_rule_configs()
     layers = {
-        "protocol": check_protocol_all(tools),
-        "quality": check_quality_all(tools),
-        "security": check_security_all(tools),
+        "protocol": check_protocol_all(tools, db_configs),
+        "quality": check_quality_all(tools, db_configs),
+        "security": check_security_all(tools, db_configs),
     }
     overlaps = detect_overlaps(tools)
     if overlaps:
@@ -358,7 +381,10 @@ async def evaluate_llm(name: str, llms: str | None = None) -> dict:
 
         cfg_info = available.get(llm_name, {})
         try:
-            llm_layer = await check_llm_all(tools, adapter, server_description, ground_truth=ground_truth_scenarios)
+            db_configs_llm = await _load_db_rule_configs()
+            llm_layer = await check_llm_all(
+                tools, adapter, server_description, ground_truth=ground_truth_scenarios, db_configs=db_configs_llm
+            )
             meta = {
                 "llm_provider": cfg_info.get("provider", llm_name),
                 "llm_model": cfg_info.get("model", "default"),
@@ -393,10 +419,11 @@ async def evaluate_llm(name: str, llms: str | None = None) -> dict:
             layers={k: _layer_from_dict(v) for k, v in existing_report["layers"].items()},
         )
     else:
+        db_configs_fb = await _load_db_rule_configs()
         layers = {
-            "protocol": check_protocol_all(tools),
-            "quality": check_quality_all(tools),
-            "security": check_security_all(tools),
+            "protocol": check_protocol_all(tools, db_configs_fb),
+            "quality": check_quality_all(tools, db_configs_fb),
+            "security": check_security_all(tools, db_configs_fb),
         }
         overlaps = detect_overlaps(tools)
         if overlaps:

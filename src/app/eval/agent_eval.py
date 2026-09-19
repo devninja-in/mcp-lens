@@ -3,8 +3,16 @@ from __future__ import annotations
 from typing import Any
 
 from .models import CheckResult, Severity, Status, ToolResult
+from .registry import register_rule
 
 
+@register_rule(
+    rule_id="agent.tool_selection",
+    layer="agent",
+    description="Agent selects the correct tool for benchmark scenarios",
+    default_severity=Severity.HIGH,
+    is_async=True,
+)
 async def evaluate_tool_selection(
     scenario: Any,
     tools: list[dict],
@@ -62,6 +70,13 @@ async def evaluate_tool_selection(
     )
 
 
+@register_rule(
+    rule_id="agent.arg_generation",
+    layer="agent",
+    description="Agent generates correct arguments for benchmark scenarios",
+    default_severity=Severity.MEDIUM,
+    is_async=True,
+)
 async def evaluate_arg_generation(
     scenario: Any,
     tools: list[dict],
@@ -151,13 +166,20 @@ def _values_match(expected: Any, actual: Any) -> bool:
         return True
     if isinstance(expected, str) and isinstance(actual, str):
         return expected.strip().lower() == actual.strip().lower()
-    if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
+    if isinstance(expected, int | float) and isinstance(actual, int | float):
         if expected == 0:
             return actual == 0
         return abs(expected - actual) / max(abs(expected), 1) < 0.01
     return False
 
 
+@register_rule(
+    rule_id="agent.trajectory",
+    layer="agent",
+    description="Agent follows expected tool call sequence",
+    default_severity=Severity.HIGH,
+    is_async=True,
+)
 async def evaluate_trajectory(
     steps: list[dict],
     expected_steps: list[dict],

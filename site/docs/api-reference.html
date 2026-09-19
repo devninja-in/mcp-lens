@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>API Reference - MCP Lens</title>
-  <meta name="description" content="Complete REST API reference for MCP Lens with all 28 endpoints for server management, tool evaluation, LLM configuration, and authentication.">
+  <meta name="description" content="Complete REST API reference for MCP Lens with all 33 endpoints for server management, tool evaluation, rules configuration, LLM configuration, and authentication.">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -79,7 +79,7 @@
     <!-- Main Content -->
     <main class="min-w-0 flex-1">
       <h1 class="text-3xl font-bold mb-2">API Reference</h1>
-      <p class="text-gray-500 mb-8">All 28 REST API endpoints exposed by the MCP Lens backend.</p>
+      <p class="text-gray-500 mb-8">All 33 REST API endpoints exposed by the MCP Lens backend.</p>
 
       <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-10 text-sm text-amber-800">
         All endpoints return JSON. When <code class="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">MCP_LENS_API_KEY</code> is set in <code class="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">.env</code>, all routes require an <code class="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">X-API-Key</code> header.
@@ -214,6 +214,48 @@
               <td class="px-4 py-3"><span class="inline-block px-2.5 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">GET</span></td>
               <td class="px-4 py-3 font-mono text-xs">/api/servers/{name}/ground-truth/template</td>
               <td class="px-4 py-3 text-gray-600">Download ground truth template</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Rules Configuration -->
+      <h2 class="text-xl font-bold mb-4 pb-2 border-b border-gray-200">Rules Configuration</h2>
+      <p class="text-sm text-gray-500 mb-4">Base path: <code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">/api/rules</code></p>
+      <div class="overflow-x-auto mb-10">
+        <table class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+          <thead>
+            <tr class="bg-gray-50 text-left">
+              <th class="px-4 py-3 font-semibold text-gray-700 w-24">Method</th>
+              <th class="px-4 py-3 font-semibold text-gray-700">Path</th>
+              <th class="px-4 py-3 font-semibold text-gray-700">Description</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr>
+              <td class="px-4 py-3"><span class="inline-block px-2.5 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">GET</span></td>
+              <td class="px-4 py-3 font-mono text-xs">/api/rules</td>
+              <td class="px-4 py-3 text-gray-600">List all rules with current config (enabled, severity, params)</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3"><span class="inline-block px-2.5 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full">PUT</span></td>
+              <td class="px-4 py-3 font-mono text-xs">/api/rules/{rule_id}</td>
+              <td class="px-4 py-3 text-gray-600">Update a rule's enabled state, severity override, or params</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3"><span class="inline-block px-2.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">POST</span></td>
+              <td class="px-4 py-3 font-mono text-xs">/api/rules/reset</td>
+              <td class="px-4 py-3 text-gray-600">Reset all rules to code-defined defaults</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3"><span class="inline-block px-2.5 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">GET</span></td>
+              <td class="px-4 py-3 font-mono text-xs">/api/rules/export</td>
+              <td class="px-4 py-3 text-gray-600">Export rule overrides as JSON</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3"><span class="inline-block px-2.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">POST</span></td>
+              <td class="px-4 py-3 font-mono text-xs">/api/rules/import</td>
+              <td class="px-4 py-3 text-gray-600">Import rule config from JSON <span class="text-gray-400">(body: version, rules[])</span></td>
             </tr>
           </tbody>
         </table>

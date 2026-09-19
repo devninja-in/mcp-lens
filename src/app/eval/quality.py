@@ -4,6 +4,14 @@ import logging
 import re
 
 from .models import CheckResult, LayerResult, Severity, Status, ToolResult
+from .registry import (
+    ParamDef,
+    RuleConfig,
+    apply_severity_override,
+    get_effective_config,
+    get_rules_for_layer,
+    register_rule,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +105,20 @@ def _split_name(name: str) -> list[str]:
     return [s.lower() for s in segments] if segments else [name.lower()]
 
 
-def _check_desc_actionable(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="quality.desc_actionable",
+    layer="quality",
+    description="Description starts with an action verb",
+    default_severity=Severity.MEDIUM,
+    params_schema={
+        "actionable_verbs": ParamDef(
+            type="list", default=list(ACTIONABLE_VERBS), description="Verbs considered actionable"
+        ),
+    },
+)
+def _check_desc_actionable(tool: dict, params: dict | None = None) -> CheckResult:
+    params = params or {}
+    verbs = set(params.get("actionable_verbs", ACTIONABLE_VERBS))
     desc = (tool.get("description") or "").strip()
     if not desc:
         return CheckResult(
@@ -114,7 +135,7 @@ def _check_desc_actionable(tool: dict) -> CheckResult:
             },
         )
     first_word = desc.lower().split()[0] if desc.split() else ""
-    if first_word in ACTIONABLE_VERBS:
+    if first_word in verbs:
         return CheckResult(
             check_id="quality.desc_actionable",
             status=Status.PASS,
@@ -135,7 +156,18 @@ def _check_desc_actionable(tool: dict) -> CheckResult:
     )
 
 
-def _check_desc_adequate_length(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="quality.desc_adequate_length",
+    layer="quality",
+    description="Description has adequate length for clarity",
+    default_severity=Severity.MEDIUM,
+    params_schema={
+        "min_length": ParamDef(type="int", default=20, description="Minimum description length in characters"),
+    },
+)
+def _check_desc_adequate_length(tool: dict, params: dict | None = None) -> CheckResult:
+    params = params or {}
+    min_length = params.get("min_length", 20)
     desc = (tool.get("description") or "").strip()
     if not desc:
         return CheckResult(
@@ -147,21 +179,22 @@ def _check_desc_adequate_length(tool: dict) -> CheckResult:
                 "location": "description",
                 "current_value": None,
                 "suggestion": (
-                    "Add a description of at least 20 characters explaining what the tool does and when to use it."
+                    f"Add a description of at least {min_length} characters"
+                    f" explaining what the tool does and when to use it."
                 ),
             },
         )
-    if len(desc) <= 20:
+    if len(desc) <= min_length:
         return CheckResult(
             check_id="quality.desc_adequate_length",
             status=Status.WARN,
-            message=f"Description is only {len(desc)} chars (should be > 20)",
+            message=f"Description is only {len(desc)} chars (should be > {min_length})",
             severity=Severity.MEDIUM,
             details={
                 "location": "description",
                 "current_value": desc,
                 "suggestion": (
-                    "Expand the description to at least 20 characters. Explain what the tool does, "
+                    f"Expand the description to at least {min_length} characters. Explain what the tool does, "
                     "its inputs, and expected output."
                 ),
             },
@@ -173,7 +206,18 @@ def _check_desc_adequate_length(tool: dict) -> CheckResult:
     )
 
 
-def _check_desc_no_filler(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="quality.desc_no_filler",
+    layer="quality",
+    description="Description does not start with generic filler text",
+    default_severity=Severity.LOW,
+    params_schema={
+        "filler_phrases": ParamDef(type="list", default=list(GENERIC_FILLERS), description="Phrases considered filler"),
+    },
+)
+def _check_desc_no_filler(tool: dict, params: dict | None = None) -> CheckResult:
+    params = params or {}
+    fillers = params.get("filler_phrases", GENERIC_FILLERS)
     desc = (tool.get("description") or "").strip()
     if not desc:
         return CheckResult(
@@ -182,7 +226,7 @@ def _check_desc_no_filler(tool: dict) -> CheckResult:
             message="No description to check for filler",
         )
     lower = desc.lower()
-    for filler in GENERIC_FILLERS:
+    for filler in fillers:
         if lower.startswith(filler):
             return CheckResult(
                 check_id="quality.desc_no_filler",
@@ -204,9 +248,20 @@ def _check_desc_no_filler(tool: dict) -> CheckResult:
     )
 
 
-def _check_desc_explains_usage(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="quality.desc_explains_usage",
+    layer="quality",
+    description="Description is detailed enough to explain usage",
+    default_severity=Severity.LOW,
+    params_schema={
+        "min_usage_length": ParamDef(type="int", default=50, description="Minimum chars for usage context"),
+    },
+)
+def _check_desc_explains_usage(tool: dict, params: dict | None = None) -> CheckResult:
+    params = params or {}
+    min_usage_length = params.get("min_usage_length", 50)
     desc = (tool.get("description") or "").strip()
-    if len(desc) > 50:
+    if len(desc) > min_usage_length:
         return CheckResult(
             check_id="quality.desc_explains_usage",
             status=Status.PASS,
@@ -215,7 +270,7 @@ def _check_desc_explains_usage(tool: dict) -> CheckResult:
     return CheckResult(
         check_id="quality.desc_explains_usage",
         status=Status.WARN,
-        message=f"Description is {len(desc)} chars; consider adding usage context (> 50 recommended)",
+        message=f"Description is {len(desc)} chars; consider adding usage context (> {min_usage_length} recommended)",
         severity=Severity.LOW,
         details={
             "location": "description",
@@ -228,7 +283,13 @@ def _check_desc_explains_usage(tool: dict) -> CheckResult:
     )
 
 
-def _check_param_all_described(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="quality.param_all_described",
+    layer="quality",
+    description="All parameters have descriptions",
+    default_severity=Severity.MEDIUM,
+)
+def _check_param_all_described(tool: dict, params: dict | None = None) -> CheckResult:
     schema = tool.get("inputSchema")
     if not isinstance(schema, dict):
         return CheckResult(
@@ -266,7 +327,13 @@ def _check_param_all_described(tool: dict) -> CheckResult:
     )
 
 
-def _check_param_all_typed(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="quality.param_all_typed",
+    layer="quality",
+    description="All parameters have type definitions",
+    default_severity=Severity.MEDIUM,
+)
+def _check_param_all_typed(tool: dict, params: dict | None = None) -> CheckResult:
     schema = tool.get("inputSchema")
     if not isinstance(schema, dict):
         return CheckResult(
@@ -305,7 +372,20 @@ def _check_param_all_typed(tool: dict) -> CheckResult:
     )
 
 
-def _check_param_enum_usage(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="quality.param_enum_usage",
+    layer="quality",
+    description="String parameters with keyword names should use enum constraints",
+    default_severity=Severity.INFO,
+    params_schema={
+        "enum_hint_keywords": ParamDef(
+            type="list", default=list(ENUM_HINT_KEYWORDS), description="Keywords suggesting enum usage"
+        ),
+    },
+)
+def _check_param_enum_usage(tool: dict, params: dict | None = None) -> CheckResult:
+    params = params or {}
+    keywords = set(params.get("enum_hint_keywords", ENUM_HINT_KEYWORDS))
     schema = tool.get("inputSchema")
     if not isinstance(schema, dict):
         return CheckResult(
@@ -320,7 +400,7 @@ def _check_param_enum_usage(tool: dict) -> CheckResult:
         if isinstance(defn, dict)
         and defn.get("type") == "string"
         and "enum" not in defn
-        and any(kw in name.lower() for kw in ENUM_HINT_KEYWORDS)
+        and any(kw in name.lower() for kw in keywords)
     ]
     if candidates:
         return CheckResult(
@@ -337,7 +417,13 @@ def _check_param_enum_usage(tool: dict) -> CheckResult:
     )
 
 
-def _check_naming_consistent(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="quality.naming_consistent",
+    layer="quality",
+    description="Tool name follows consistent snake_case or camelCase",
+    default_severity=Severity.MEDIUM,
+)
+def _check_naming_consistent(tool: dict, params: dict | None = None) -> CheckResult:
     name = tool.get("name", "")
     if not name:
         return CheckResult(
@@ -367,7 +453,13 @@ def _check_naming_consistent(tool: dict) -> CheckResult:
     )
 
 
-def _check_naming_verb_prefix(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="quality.naming_verb_prefix",
+    layer="quality",
+    description="Tool name starts with an action verb",
+    default_severity=Severity.LOW,
+)
+def _check_naming_verb_prefix(tool: dict, params: dict | None = None) -> CheckResult:
     name = tool.get("name", "")
     if not name:
         return CheckResult(
@@ -400,7 +492,13 @@ def _check_naming_verb_prefix(tool: dict) -> CheckResult:
     )
 
 
-def _check_annotation_hints(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="quality.annotation_hints",
+    layer="quality",
+    description="Tool has readOnlyHint and destructiveHint annotations",
+    default_severity=Severity.LOW,
+)
+def _check_annotation_hints(tool: dict, params: dict | None = None) -> CheckResult:
     annotations = tool.get("annotations")
     if not isinstance(annotations, dict):
         return CheckResult(
@@ -443,7 +541,13 @@ def _check_annotation_hints(tool: dict) -> CheckResult:
     )
 
 
-def _check_output_schema(tool: dict) -> CheckResult:
+@register_rule(
+    rule_id="quality.output_schema",
+    layer="quality",
+    description="Tool has an outputSchema defined (optional)",
+    default_severity=Severity.INFO,
+)
+def _check_output_schema(tool: dict, params: dict | None = None) -> CheckResult:
     if tool.get("outputSchema") is not None:
         return CheckResult(
             check_id="quality.output_schema",
@@ -458,28 +562,32 @@ def _check_output_schema(tool: dict) -> CheckResult:
     )
 
 
-def check_tool_quality(tool: dict) -> list[CheckResult]:
-    return [
-        _check_desc_actionable(tool),
-        _check_desc_adequate_length(tool),
-        _check_desc_no_filler(tool),
-        _check_desc_explains_usage(tool),
-        _check_param_all_described(tool),
-        _check_param_all_typed(tool),
-        _check_param_enum_usage(tool),
-        _check_naming_consistent(tool),
-        _check_naming_verb_prefix(tool),
-        _check_annotation_hints(tool),
-        _check_output_schema(tool),
-    ]
+def check_tool_quality(tool: dict, db_configs: dict[str, RuleConfig] | None = None) -> list[CheckResult]:
+    if db_configs is None:
+        db_configs = {}
+    rules = get_rules_for_layer("quality")
+    checks: list[CheckResult] = []
+    for rule_id, rule_def in rules.items():
+        enabled, severity, params = get_effective_config(rule_def, db_configs.get(rule_id))
+        if not enabled:
+            continue
+        result = rule_def.check_fn(tool, params=params)
+        if isinstance(result, list):
+            for c in result:
+                apply_severity_override(c, severity)
+                checks.append(c)
+        else:
+            apply_severity_override(result, severity)
+            checks.append(result)
+    return checks
 
 
-def check_quality_all(tools: list[dict]) -> LayerResult:
+def check_quality_all(tools: list[dict], db_configs: dict[str, RuleConfig] | None = None) -> LayerResult:
     logger.info("Running quality checks on %d tools", len(tools))
     results = []
     for tool in tools:
         name = tool.get("name", "<unnamed>")
-        checks = check_tool_quality(tool)
+        checks = check_tool_quality(tool, db_configs)
         for c in checks:
             c.tool_name = name
         tr = ToolResult(tool_name=name, checks=checks)

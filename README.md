@@ -16,6 +16,7 @@ MCP Lens connects to [Model Context Protocol](https://modelcontextprotocol.io/) 
 - **Combined export** — Download tools + evaluation data as JSON, YAML, or PDF with selectable sections
 - **In-app reference** — About page with all evaluation rules, scoring logic, and LLM configuration docs
 - **Regression tracking** — Compare reports over time to catch regressions
+- **Configurable rules** — Enable/disable rules, override severity, tune parameters from the UI; export/import rule configs as JSON
 - **CLI and API** — Run evaluations headlessly in CI or programmatically via REST
 - **SQLite persistence** — Server configs, auth tokens, and evaluation reports stored in a local database
 - **Optional LLM evaluation** — Five additional checks that test tools from an AI agent's perspective
@@ -170,12 +171,14 @@ src/
       llm_eval.py   #   Layer 4: LLM-assisted evaluation
       scoring.py    #   Scoring & gate logic
       runner.py     #   Orchestrates all layers
+      registry.py   #   Rule registry, config resolution, export/import
       model_adapter.py  # LLM provider adapters (Anthropic, OpenAI, VertexAI, Gemini)
       llm_config.py #   Multi-LLM config loader (llm.json)
       regression.py #   Report comparison
     routes/
       servers.py    # CRUD endpoints for server configs
       tools.py      # Tool fetch, evaluation, false positive marking
+      rules.py      # Rules configuration CRUD, export/import
       auth_routes.py # OAuth/DCR flows, token management
     database.py     # SQLAlchemy async models (SQLite/PostgreSQL)
     mcp_client.py   # MCP protocol client (JSON-RPC 2.0 over streamable HTTP)
@@ -190,6 +193,7 @@ src/
         ToolsViewer.tsx     # Tool list + evaluation tabs, combined export
         EvaluationView.tsx  # Evaluation report with false positive marking
         DownloadModal.tsx   # Export options modal (JSON/PDF)
+        RulesPage.tsx        # Rules configuration UI (toggle, severity, params)
         AboutPage.tsx       # In-app evaluation rules reference
       utils/
         download.ts         # PDF/JSON export (jspdf + jspdf-autotable)
@@ -226,6 +230,44 @@ tools:
 ```
 
 Uploaded tools work identically to fetched tools for evaluation. A badge in the UI indicates the source ("Uploaded by user" vs "Fetched from server"). Re-fetching from the server overrides uploaded tools, and uploading overrides previously fetched tools.
+
+## Rules Configuration
+
+MCP Lens ships with 33 evaluation rules across 5 layers. All rules can be customized from the **Rules** tab in the web UI or via the REST API — no code changes or restarts needed.
+
+### What You Can Configure
+
+| Control | Description |
+|---------|-------------|
+| **Enable / Disable** | Toggle individual rules on or off. Disabled rules are skipped during evaluation. |
+| **Severity Override** | Change a rule's severity level (critical, high, medium, low, info). This affects scoring weight and gate logic. |
+| **Parameters** | Some rules accept tunable parameters (e.g., overlap threshold, minimum description length). |
+| **Export / Import** | Export customizations as JSON to share across environments. Import to restore settings. |
+| **Reset to Defaults** | Clear all overrides and restore code-defined defaults. |
+
+### How It Works
+
+- Rules self-register via the `@register_rule` decorator in the backend
+- The database stores only overrides — code defaults are used when no override exists
+- New rules added in code auto-seed on startup and appear in the UI automatically
+- Exported JSON contains only rules with overrides; rules at defaults are omitted
+
+### Export Format
+
+```json
+{
+  "version": 1,
+  "exported_at": "2026-09-19T10:00:00Z",
+  "rules": [
+    {
+      "rule_id": "quality.desc_actionable",
+      "enabled": true,
+      "severity": "high",
+      "params": null
+    }
+  ]
+}
+```
 
 ## Evaluation Layers
 
@@ -390,6 +432,16 @@ See [docs/RULES.md](docs/RULES.md) for detailed rule definitions and examples.
 | `DELETE` | `/api/servers/{name}/ground-truth` | Delete ground truth |
 | `GET` | `/api/servers/{name}/ground-truth/template` | Download ground truth YAML template |
 | `GET` | `/api/llm-configs` | List available LLM configurations from `llm.json` |
+
+### Rules Configuration
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/rules` | List all rules with current config |
+| `PUT` | `/api/rules/{rule_id}` | Update a rule's enabled state, severity, or params |
+| `POST` | `/api/rules/reset` | Reset all rules to code-defined defaults |
+| `GET` | `/api/rules/export` | Export rule overrides as JSON |
+| `POST` | `/api/rules/import` | Import rule config from JSON |
 
 ### Authentication
 

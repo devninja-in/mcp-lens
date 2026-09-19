@@ -111,10 +111,7 @@ class OpenAIAdapter:
                 "name": t.get("name", ""),
                 "description": t.get("description", ""),
             }
-            if "inputSchema" in t:
-                fn["parameters"] = t["inputSchema"]
-            else:
-                fn["parameters"] = {"type": "object", "properties": {}}
+            fn["parameters"] = t.get("inputSchema", {"type": "object", "properties": {}})
             functions.append(fn)
 
         import json

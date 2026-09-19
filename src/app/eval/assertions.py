@@ -13,7 +13,7 @@ def resolve_path(data: Any, path: str) -> Any:
     current = data
     for segment in _split_path(path):
         if isinstance(segment, int):
-            if not isinstance(current, (list, tuple)) or segment >= len(current):
+            if not isinstance(current, list | tuple) or segment >= len(current):
                 raise KeyError(f"Index {segment} out of range at path '{path}'")
             current = current[segment]
         elif isinstance(current, dict):
@@ -98,7 +98,7 @@ def _assert_not_equals(value: Any, expected: Any, path: str) -> CheckResult:
 def _assert_contains(value: Any, expected: Any, path: str) -> CheckResult:
     if isinstance(value, str):
         passed = str(expected) in value
-    elif isinstance(value, (list, tuple)):
+    elif isinstance(value, list | tuple):
         passed = expected in value
     else:
         passed = False
@@ -114,7 +114,7 @@ def _assert_contains(value: Any, expected: Any, path: str) -> CheckResult:
 def _assert_not_contains(value: Any, expected: Any, path: str) -> CheckResult:
     if isinstance(value, str):
         passed = str(expected) not in value
-    elif isinstance(value, (list, tuple)):
+    elif isinstance(value, list | tuple):
         passed = expected not in value
     else:
         passed = True
@@ -233,7 +233,7 @@ def _assert_is_string(value: Any, expected: Any, path: str) -> CheckResult:
 def _assert_is_number(value: Any, expected: Any, path: str) -> CheckResult:
     return _make_check(
         "is_number",
-        isinstance(value, (int, float)) and not isinstance(value, bool),
+        isinstance(value, int | float) and not isinstance(value, bool),
         path,
         "Value is a number",
         f"Expected number, got {type(value).__name__}",
@@ -283,7 +283,7 @@ def _assert_length_lte(value: Any, expected: Any, path: str) -> CheckResult:
 
 
 def _assert_gt(value: Any, expected: Any, path: str) -> CheckResult:
-    passed = isinstance(value, (int, float)) and value > float(expected)
+    passed = isinstance(value, int | float) and value > float(expected)
     return _make_check(
         "gt",
         passed,
@@ -294,7 +294,7 @@ def _assert_gt(value: Any, expected: Any, path: str) -> CheckResult:
 
 
 def _assert_gte(value: Any, expected: Any, path: str) -> CheckResult:
-    passed = isinstance(value, (int, float)) and value >= float(expected)
+    passed = isinstance(value, int | float) and value >= float(expected)
     return _make_check(
         "gte",
         passed,
@@ -305,7 +305,7 @@ def _assert_gte(value: Any, expected: Any, path: str) -> CheckResult:
 
 
 def _assert_lt(value: Any, expected: Any, path: str) -> CheckResult:
-    passed = isinstance(value, (int, float)) and value < float(expected)
+    passed = isinstance(value, int | float) and value < float(expected)
     return _make_check(
         "lt",
         passed,
@@ -316,7 +316,7 @@ def _assert_lt(value: Any, expected: Any, path: str) -> CheckResult:
 
 
 def _assert_lte(value: Any, expected: Any, path: str) -> CheckResult:
-    passed = isinstance(value, (int, float)) and value <= float(expected)
+    passed = isinstance(value, int | float) and value <= float(expected)
     return _make_check(
         "lte",
         passed,
