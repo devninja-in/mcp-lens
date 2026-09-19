@@ -67,7 +67,7 @@ function Code({ children }: { children: string }) {
   return <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono text-gray-800">{children}</code>
 }
 
-const ALL_SECTIONS = ['overview', 'upload', 'layers', 'protocol', 'quality', 'security', 'llm', 'scoring', 'config', 'guidelines']
+const ALL_SECTIONS = ['overview', 'upload', 'layers', 'protocol', 'quality', 'security', 'llm', 'scoring', 'rules', 'config', 'guidelines']
 
 export default function AboutPage() {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(ALL_SECTIONS))
@@ -376,6 +376,62 @@ export default function AboutPage() {
           <li>No critical failures in <Code>protocol</Code> or <Code>security</Code> layers</li>
         </ol>
         <p className="text-xs text-gray-500 mt-2">A single critical security failure gates the entire report regardless of the overall score.</p>
+      </Section>
+
+      {/* Rules Configuration */}
+      <Section id="rules" title="Rules Configuration" expanded={expanded.has('rules')} onToggle={toggle}>
+        <p>
+          MCP Lens ships with 33 evaluation rules across 5 layers. The <strong>Rules</strong> tab lets you customize
+          which rules are active and how they behave — without editing code or restarting the server.
+        </p>
+
+        <h4 className="font-medium text-gray-800 mt-4">What You Can Configure</h4>
+        <div className="space-y-2 mt-2">
+          {[
+            { label: 'Enable / Disable', detail: 'Toggle individual rules on or off. Disabled rules are skipped during evaluation.' },
+            { label: 'Severity Override', detail: 'Change the severity level (critical, high, medium, low, info) of any rule. This affects scoring weight and gate logic.' },
+            { label: 'Parameters', detail: 'Some rules accept parameters (e.g., overlap threshold, minimum description length). Expand a rule to adjust its parameters.' },
+          ].map(item => (
+            <div key={item.label} className="bg-gray-50 rounded-lg p-2.5">
+              <span className="font-medium text-gray-800 text-xs">{item.label}:</span>
+              <span className="text-xs text-gray-600 ml-1">{item.detail}</span>
+            </div>
+          ))}
+        </div>
+
+        <h4 className="font-medium text-gray-800 mt-4">Export / Import</h4>
+        <p className="text-xs text-gray-500">
+          Export your rule customizations as a JSON file to share across environments or back up your configuration.
+          Import a previously exported file to restore settings. The JSON format includes only overrides — rules left
+          at their defaults are omitted.
+        </p>
+        <div className="bg-gray-50 rounded-lg p-3 mt-2 font-mono text-[11px] text-gray-600 whitespace-pre">{`{
+  "version": 1,
+  "rules": [
+    {
+      "rule_id": "quality.desc_actionable",
+      "enabled": true,
+      "severity": "high",
+      "params": null
+    }
+  ]
+}`}</div>
+
+        <h4 className="font-medium text-gray-800 mt-4">How It Works</h4>
+        <ul className="list-disc list-inside text-xs text-gray-600 space-y-1 ml-2 mt-2">
+          <li>Rules are self-registered via the <Code>@register_rule</Code> decorator in the backend</li>
+          <li>The database stores only your overrides — code defaults are used when no override exists</li>
+          <li>Rules auto-seed on startup: new rules added in code appear automatically in the UI</li>
+          <li><strong>Reset to Defaults</strong> clears all overrides and restores every rule to its code-defined defaults</li>
+        </ul>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4 text-xs">
+          <p className="text-blue-800">
+            <strong>API endpoints:</strong> Rules can also be managed programmatically via <Code>GET /api/rules</Code>,{' '}
+            <Code>PUT /api/rules/&#123;rule_id&#125;</Code>, <Code>POST /api/rules/reset</Code>,{' '}
+            <Code>GET /api/rules/export</Code>, and <Code>POST /api/rules/import</Code>.
+          </p>
+        </div>
       </Section>
 
       {/* Configuration */}
