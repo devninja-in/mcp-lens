@@ -73,9 +73,7 @@ def get_effective_config(
 ) -> tuple[bool, Severity | None, dict[str, Any]]:
     enabled = db_config.enabled if db_config is not None else rule_def.default_enabled
     severity = (
-        db_config.severity_override
-        if db_config is not None and db_config.severity_override is not None
-        else None
+        db_config.severity_override if db_config is not None and db_config.severity_override is not None else None
     )
     params = {}
     for key, param_def in rule_def.params_schema.items():
@@ -104,9 +102,7 @@ def export_rules(db_configs: dict[str, RuleConfig]) -> list[dict]:
             continue
         rule_def = RULE_REGISTRY[rule_id]
         has_override = (
-            config.enabled != rule_def.default_enabled
-            or config.severity_override is not None
-            or config.params
+            config.enabled != rule_def.default_enabled or config.severity_override is not None or config.params
         )
         if has_override:
             entry: dict[str, Any] = {"rule_id": rule_id, "enabled": config.enabled}

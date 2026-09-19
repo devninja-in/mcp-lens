@@ -218,9 +218,7 @@ class TestExportImport:
             "rule.b": RuleConfig(rule_id="rule.b", enabled=False, severity_override=None, params={}),
         }
         first_rule = next(iter(RULE_REGISTRY.keys()))
-        configs[first_rule] = RuleConfig(
-            rule_id=first_rule, enabled=False, severity_override=Severity.HIGH, params={}
-        )
+        configs[first_rule] = RuleConfig(rule_id=first_rule, enabled=False, severity_override=Severity.HIGH, params={})
         exported = export_rules(configs)
         exported_ids = [e["rule_id"] for e in exported]
         assert first_rule in exported_ids
