@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import get_frontend_port
 from .database import check_db_health, dispose_db, init_db, seed_rule_configs
 from .middleware import ApiKeyMiddleware
-from .routes import auth_routes, llm, rules, servers, tools
+from .routes import auth_routes, compare, llm, rules, servers, tools
 
 _VERSION = "0.1.0"
 
@@ -63,6 +63,7 @@ app.include_router(auth_routes.oauth_callback_router)
 app.include_router(tools.router)
 app.include_router(llm.router)
 app.include_router(rules.router)
+app.include_router(compare.router)
 
 
 @app.exception_handler(Exception)

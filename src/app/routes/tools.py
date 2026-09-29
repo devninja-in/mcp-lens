@@ -12,11 +12,14 @@ from ..config import load_config, persist_oauth_tokens
 from ..database import (
     delete_ground_truth,
     get_all_rule_configs,
+    get_capability_analysis,
     get_eval_report,
     get_ground_truth,
+    save_capability_analysis,
     save_eval_report,
     save_ground_truth,
 )
+from ..eval.comparison import categorize_tools_detailed
 from ..eval.llm_config import (
     get_adapter_for_config,
     get_available_llm_configs,
@@ -110,6 +113,72 @@ async def test_connection(name: str) -> dict:
     except Exception as e:
         logger.error("Connection test error for '%s': %s", name, e)
         return {"success": False, "message": str(e)}
+
+
+@router.get("/{name}/capabilities")
+async def get_capabilities(name: str) -> dict:
+    config = await load_config()
+    if name not in config.mcp_servers:
+        raise HTTPException(status_code=404, detail=f"Server '{name}' not found")
+    try:
+        result, _ = await mcp_initialize(name, config.mcp_servers[name])
+        if "error" in result:
+            return {"success": False, "message": f"MCP error: {result['error']}"}
+        res = result.get("result", {})
+        return {
+            "success": True,
+            "serverInfo": res.get("serverInfo", {}),
+            "capabilities": res.get("capabilities", {}),
+        }
+    except ReAuthRequiredError as e:
+        return {"success": False, "message": str(e), "reauth": True}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+
+@router.get("/{name}/capabilities/analyze")
+async def get_cached_capability_analysis(name: str) -> dict:
+    cached = await get_capability_analysis(name)
+    if cached is None:
+        return {"success": False, "exists": False}
+    return {"success": True, "exists": True, **cached}
+
+
+@router.post("/{name}/capabilities/analyze")
+async def analyze_capabilities(name: str, llm: str | None = None) -> dict:
+    tools_data = load_tools(name)
+    if tools_data is None:
+        raise HTTPException(status_code=400, detail=f"No tools fetched for '{name}'. Fetch tools first.")
+
+    llm_name = llm or get_default_llm_name()
+    if not llm_name:
+        raise HTTPException(
+            status_code=422, detail="LLM configuration required. Create llm.json with at least one config."
+        )
+
+    available = get_available_llm_configs()
+    if llm_name not in available:
+        raise HTTPException(status_code=404, detail=f"LLM config '{llm_name}' not found.")
+
+    try:
+        adapter = get_adapter_for_config(llm_name)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Could not load LLM adapter: {e}") from e
+
+    cfg_info = available[llm_name]
+    logger.info("Analyzing capabilities for '%s' using LLM '%s'", name, llm_name)
+    categories = await categorize_tools_detailed(tools_data["tools"], adapter)
+    result = {
+        "success": True,
+        "categories": categories,
+        "tool_count": len(tools_data["tools"]),
+        "category_count": len(categories),
+        "llm_name": llm_name,
+        "llm_provider": cfg_info.get("provider", llm_name),
+        "llm_model": cfg_info.get("model", ""),
+    }
+    await save_capability_analysis(name, result)
+    return result
 
 
 @router.post("/{name}/fetch-tools")

@@ -5,6 +5,7 @@ import ServerForm from './components/ServerForm'
 import ToolsViewer from './components/ToolsViewer'
 import AboutPage from './components/AboutPage'
 import RulesPage from './components/RulesPage'
+import ComparePage from './components/ComparePage'
 import Toast from './components/Toast'
 import * as api from './api'
 
@@ -18,7 +19,7 @@ export default function App() {
   const [viewingTools, setViewingTools] = useState<string | null>(null)
   const [initialTab, setInitialTab] = useState<'tools' | 'evaluate'>('tools')
   const [serversCache, setServersCache] = useState<Record<string, McpServerConfig>>({})
-  const [page, setPage] = useState<'servers' | 'rules' | 'about'>('servers')
+  const [page, setPage] = useState<'servers' | 'rules' | 'about' | 'compare'>('servers')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -113,6 +114,16 @@ export default function App() {
             Rules
           </button>
           <button
+            onClick={() => { setPage('compare'); setViewingTools(null) }}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              activePage === 'compare'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Compare
+          </button>
+          <button
             onClick={() => { setPage('servers'); setViewingTools(null) }}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
               activePage === 'servers'
@@ -148,6 +159,16 @@ export default function App() {
       <div className="max-w-6xl mx-auto px-6 py-8">
         {nav}
         <RulesPage onToast={handleToast} />
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </div>
+    )
+  }
+
+  if (page === 'compare') {
+    return (
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        {nav}
+        <ComparePage onToast={handleToast} />
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </div>
     )
