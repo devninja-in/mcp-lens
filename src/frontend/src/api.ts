@@ -45,6 +45,47 @@ export async function testConnection(name: string): Promise<{ success: boolean; 
   return fetchJson(`/servers/${encodeURIComponent(name)}/test`, { method: 'POST' })
 }
 
+export interface ServerCapabilities {
+  success: boolean
+  message?: string
+  serverInfo?: Record<string, unknown>
+  capabilities?: Record<string, unknown>
+  reauth?: boolean
+}
+
+export async function getCapabilities(name: string): Promise<ServerCapabilities> {
+  return fetchJson(`/servers/${encodeURIComponent(name)}/capabilities`)
+}
+
+export interface CapabilityCategory {
+  description: string
+  tools: string[]
+}
+
+export interface CapabilityAnalysis {
+  success: boolean
+  categories: Record<string, CapabilityCategory>
+  tool_count: number
+  category_count: number
+  llm_name?: string
+  llm_provider?: string
+  llm_model?: string
+}
+
+export async function getCachedCapabilityAnalysis(name: string): Promise<CapabilityAnalysis | null> {
+  try {
+    const data = await fetchJson<CapabilityAnalysis & { exists?: boolean }>(`/servers/${encodeURIComponent(name)}/capabilities/analyze`)
+    return data.exists === false ? null : data
+  } catch {
+    return null
+  }
+}
+
+export async function analyzeCapabilities(name: string, llm?: string): Promise<CapabilityAnalysis> {
+  const params = llm ? `?llm=${encodeURIComponent(llm)}` : ''
+  return fetchJson(`/servers/${encodeURIComponent(name)}/capabilities/analyze${params}`, { method: 'POST' })
+}
+
 export async function fetchTools(name: string): Promise<{ success: boolean; message: string; tools: ToolInfo[]; count: number }> {
   return fetchJson(`/servers/${encodeURIComponent(name)}/fetch-tools`, { method: 'POST' })
 }
@@ -264,4 +305,89 @@ export async function importRules(data: { version: string; rules: unknown[] }): 
     method: 'POST',
     body: JSON.stringify(data),
   })
+}
+
+// --- Compare API ---
+
+export interface ToolInventoryDiff {
+  only_a: string[]
+  only_b: string[]
+  common: string[]
+  count_a: number
+  count_b: number
+}
+
+export interface CapabilityRow {
+  capability: string
+  server_a: boolean
+  server_b: boolean
+}
+
+export interface CapabilitiesComparison {
+  server_a: { serverInfo: Record<string, unknown>; capabilities: Record<string, unknown> }
+  server_b: { serverInfo: Record<string, unknown>; capabilities: Record<string, unknown> }
+  capability_matrix: CapabilityRow[]
+}
+
+export interface CategoryCoverage {
+  category: string
+  server_a_tools: string[]
+  server_b_tools: string[]
+  server_a_count: number
+  server_b_count: number
+}
+
+export interface SchemaDiff {
+  tool_name: string
+  identical: boolean
+  differences: { path: string; server_a: unknown; server_b: unknown }[]
+  schema_a: Record<string, unknown>
+  schema_b: Record<string, unknown>
+}
+
+export interface EvalScoreComparison {
+  server_a_score: number | null
+  server_b_score: number | null
+  layers: Record<string, { server_a: number | null; server_b: number | null }>
+}
+
+export interface ServerComparisonReport {
+  server_a: string
+  server_b: string
+  timestamp: string
+  tool_inventory: ToolInventoryDiff
+  capabilities: CapabilitiesComparison | null
+  categories: CategoryCoverage[]
+  eval_scores: EvalScoreComparison
+  schema_diffs: SchemaDiff[]
+}
+
+export interface ComparisonListItem {
+  id: number
+  server_a: string
+  server_b: string
+  updated_at: string
+}
+
+export async function checkComparison(
+  serverA: string, serverB: string
+): Promise<{ exists: boolean; report: ServerComparisonReport | null }> {
+  return fetchJson(`/compare?server_a=${encodeURIComponent(serverA)}&server_b=${encodeURIComponent(serverB)}`)
+}
+
+export async function runServerComparison(
+  serverA: string, serverB: string
+): Promise<ServerComparisonReport> {
+  return fetchJson('/compare', {
+    method: 'POST',
+    body: JSON.stringify({ server_a: serverA, server_b: serverB }),
+  })
+}
+
+export async function listComparisons(): Promise<{ reports: ComparisonListItem[] }> {
+  return fetchJson('/compare/list')
+}
+
+export async function deleteComparison(id: number): Promise<{ success: boolean }> {
+  return fetchJson(`/compare/${id}`, { method: 'DELETE' })
 }

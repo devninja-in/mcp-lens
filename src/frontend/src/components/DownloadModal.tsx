@@ -16,6 +16,7 @@ interface Props {
 const FORMATS = [
   { key: 'json', label: 'JSON' },
   { key: 'yaml', label: 'YAML' },
+  { key: 'md', label: 'Markdown' },
   { key: 'pdf', label: 'PDF' },
 ] as const
 
